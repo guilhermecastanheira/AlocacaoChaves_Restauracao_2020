@@ -72,6 +72,8 @@ public:
 	int cadidato_aloc[linha_dados]; //candidato a alocação de chaves
 	int estado_swt[linha_dados]; //estado da chave
 
+	float dist_no[linha_dados]; //distancia entre nós
+
 	std::complex <float> lt[linha_dados]; //linha de transmissao entre nós
 	std::complex <float> s_nof[linha_dados]; //potencia complexa do nof
 
@@ -120,7 +122,7 @@ class AlocacaoChaves
 public:
 
 	int numch = numeroch_inicial; //numero de chaves alocadas
-	int posicaochaves[100]; //vetor com as posicoes das chaves
+	int posicaochaves[linha_dados]; //vetor com as posicoes das chaves
 
 }ac;
 
@@ -143,7 +145,7 @@ void ParametrosSistema::leitura_parametros()
 
 	for (int i = 1; i < linha_dados; i++)
 	{
-		fscanf(arquivo, "%d%d%f%f%f%f%d%d", &ps.noi[i], &ps.nof[i], &ps.lt_r[i], &ps.lt_x[i], &ps.s_nofr[i], &ps.s_nofq[i], &ps.cadidato_aloc[i], &ps.estado_swt[i]);
+		fscanf(arquivo, "%d%d%f%f%f%f%d%d%f", &ps.noi[i], &ps.nof[i], &ps.lt_r[i], &ps.lt_x[i], &ps.s_nofr[i], &ps.s_nofq[i], &ps.cadidato_aloc[i], &ps.estado_swt[i], &ps.dist_no[i]);
 	}
 
 	fclose(arquivo);
