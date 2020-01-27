@@ -305,6 +305,9 @@ void FluxoPotencia::valores_nominais_tensao()
 	std::cout << "No:" << "\t";
 	std::cout << "V:" << "\t";
 	std::cout << "ang:" << "\t";
+	std::cout << "\t";
+	std::cout << "I:" << "\t";
+	std::cout << "ang:" << "\t";
 	std::cout << "\n";
 
 	for (int i = 1; i < linha_dados; i++)
@@ -312,7 +315,9 @@ void FluxoPotencia::valores_nominais_tensao()
 		std::cout << ps.nof[i] << "\t";
 		std::cout << std::abs(fxp.tensao_pu[i] * vref) << "\t";
 		std::cout << std::arg(fxp.tensao_pu[i]) * 180 / 3.141592 << "\t";
-		std::cout << "\n";
+		//std::cout << "\t";
+		std::cout << std::abs(fxp.corrente_pu[i] * iref) << "\t";
+		std::cout << std::arg(fxp.corrente_pu[i]) * 180 / 3.141592 << "\n";
 	}
 }
 
