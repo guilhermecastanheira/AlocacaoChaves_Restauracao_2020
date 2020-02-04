@@ -150,7 +150,7 @@
     <ClCompile Include="algoritimoICcpp.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <Text Include="dados135.txt" />
+    <Text Include="dados136.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

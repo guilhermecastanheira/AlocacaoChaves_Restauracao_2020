@@ -19,6 +19,8 @@
 
 //Caracteristicas -----------------------------------------------------
 
+#define num_AL 9 //numero de alimentadores +1 por conta do cpp
+
 //alimentadores das subestações
 #define a1 1000 //alimentador 1
 #define a2 1001 //alimentador 2
@@ -29,8 +31,8 @@
 #define a7 1006 //alimentador 7
 #define a8 1007 //alimentador 8
 
-//Numero de chaves inicial
-#define numeroch_inicial 6; //conta-se mais um por conta do sistema do c++
+//Chave a cada quantos kW?
+#define parametroCH_kW 1000;
 
 // dados dos condutores a serem usados (catálogo Nexans): 
 std::complex <float> t_raven = std::complex <float>(0.7208, 0.4186); //T-Raven 
@@ -121,8 +123,13 @@ class AlocacaoChaves
 {
 public:
 
-	int numch = numeroch_inicial; //numero de chaves alocadas
-	int posicaochaves[linha_dados]; //vetor com as posicoes das chaves
+	int numch_AL[num_AL]; //numero de chaves por alimentador seguindo o criterio estipulado
+	int posicaochaves[num_AL][linha_dados]; //vetor com as posicoes das chaves
+
+private:
+
+	void criterio_numero_de_chaves();
+	void contagem_criterio(int camada[linha_dados][linha_dados], int numeroestipulado);
 
 }ac;
 
@@ -130,7 +137,7 @@ class MetaheuristicaGVNS
 {
 public:
 
-	void primeiraalocacaosistema();
+	//void primeiraalocacaosistema(int numch);
 
 }gvns;
 
@@ -140,7 +147,7 @@ void ParametrosSistema::leitura_parametros()
 {
 	FILE* arquivo;
 
-	if ((arquivo = fopen("dados135.txt", "r")) == NULL)
+	if ((arquivo = fopen("dados136.txt", "r")) == NULL)
 		return;
 
 	for (int i = 1; i < linha_dados; i++)
@@ -179,6 +186,18 @@ void ParametrosSistema::leitura_parametros()
 
 void FluxoPotencia::camadas(int alimentador, int camadaalimentador[linha_dados][linha_dados])
 {
+	//zerar camada 
+
+	for (int i = 1; i < linha_dados; i++)
+	{
+		for (int j = 1; j < linha_dados; j++)
+		{
+			camadaalimentador[i][j] = 0;
+		}
+	}
+
+	//define a camada do alimentador 
+
 	camadaalimentador[1][1] = alimentador;
 
 	int x = 2;
@@ -208,6 +227,7 @@ void FluxoPotencia::camadas(int alimentador, int camadaalimentador[linha_dados][
 		x += 1;
 		y = 1;
 	}
+
 }
 
 void FluxoPotencia::conexao_alimentadores()
@@ -321,7 +341,7 @@ void FluxoPotencia::valores_nominais_tensao()
 	}
 }
 
-void FluxoPotencia::fluxo_potencia()
+void FluxoPotencia::fluxo_potencia() //alterar conforme o numero de alimentadores, modificando quantas vezes cada funcao eh chamada
 {
 	bool criterio_satisfeito = false;
 
@@ -428,16 +448,56 @@ void FluxoPotencia::fluxo_potencia()
 		}
 	}
 
+} 
+
+void AlocacaoChaves::contagem_criterio(int camada[linha_dados][linha_dados], int numeroestipulado)
+{
+	int potencia = 0;
+
+	potencia = 0;
+
+	//somando potencia
+	for (int i = 1; i < linha_dados; i++)
+	{
+		for (int j = 1; j < linha_dados; j++)
+		{
+			//segundo passo
+			for (int k = 1; k < linha_dados; k++)
+			{
+				if (camada[i][j] == ps.nof[k])
+				{
+					potencia =+ ps.s_nofr[k];
+				}
+			}
+
+		}
+	}
+
+	//encontando o numero estipulado
+	numeroestipulado = potencia / parametroCH_kW;
 }
 
-void MetaheuristicaGVNS::primeiraalocacaosistema()
+void AlocacaoChaves::criterio_numero_de_chaves() //alterar conforme o numero de alimentadores, modificando quantas vezes cada funcao eh chamada
 {
-	//na primeira alocacao, temos as chaves sorteadas inicialmente, podendo esta aumentar ou nao.
+	contagem_criterio(fxp.camadaAL1, ac.numch_AL[1]);
+	contagem_criterio(fxp.camadaAL2, ac.numch_AL[2]);
+	contagem_criterio(fxp.camadaAL3, ac.numch_AL[3]);
+	contagem_criterio(fxp.camadaAL4, ac.numch_AL[4]);
+	contagem_criterio(fxp.camadaAL5, ac.numch_AL[5]);
+	contagem_criterio(fxp.camadaAL6, ac.numch_AL[6]);
+	contagem_criterio(fxp.camadaAL7, ac.numch_AL[7]);
+	contagem_criterio(fxp.camadaAL8, ac.numch_AL[8]);
+}
+
+/*
+void MetaheuristicaGVNS::primeiraalocacaosistema(int numch)
+{
+	//na primeira alocacao, temos as chaves sorteadas para cada alimentador
 
 	int sorteio = 0; //variavel com o valor do sorteio
 	int cont = 0;
 
-	for (int i = 1; i < ac.numch; i++)
+	for (int i = 1; i < numch; i++)
 	{
 	dnv:
 		sorteio = rand() % (linha_dados - 1) + 1;
@@ -449,9 +509,9 @@ void MetaheuristicaGVNS::primeiraalocacaosistema()
 		else if (ps.cadidato_aloc[sorteio] != 0)
 		{
 			cont = 0;
-			for (int k = 1; k < ac.numch; k++)
+			for (int k = 1; k < numch; k++)
 			{
-				for (int j = 1; j < ac.numch; j++)
+				for (int j = 1; j < numch; j++)
 				{
 					if (ac.posicaochaves[k] == ac.posicaochaves[j] && ac.posicaochaves[j] != 0)
 					{
@@ -466,6 +526,7 @@ void MetaheuristicaGVNS::primeiraalocacaosistema()
 		else { goto dnv; }
 	}
 }
+*/
 
 //############################################################################################
 
@@ -483,6 +544,6 @@ int main()
 	//tirando de pu, para conferir
 	fxp.valores_nominais_tensao();
 
-	gvns.primeiraalocacaosistema();
+	//gvns.primeiraalocacaosistema();
 
 }
