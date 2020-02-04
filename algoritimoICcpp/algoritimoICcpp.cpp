@@ -126,10 +126,12 @@ public:
 	int numch_AL[num_AL]; //numero de chaves por alimentador seguindo o criterio estipulado
 	int posicaochaves[num_AL][linha_dados]; //vetor com as posicoes das chaves
 
-private:
 
 	void criterio_numero_de_chaves();
-	void contagem_criterio(int camada[linha_dados][linha_dados], int numeroestipulado);
+
+private:
+
+	int contagem_criterio(int camada[linha_dados][linha_dados]);
 
 }ac;
 
@@ -137,8 +139,11 @@ class MetaheuristicaGVNS
 {
 public:
 
-	//void primeiraalocacaosistema(int numch);
+	void primeiraaloc();
 
+private:
+
+	void sorteiochaves(int numch, int camada[linha_dados][linha_dados], int posicao_camada[linha_dados], int alimentador);
 }gvns;
 
 //------------------------------------------------------------
@@ -450,9 +455,11 @@ void FluxoPotencia::fluxo_potencia() //alterar conforme o numero de alimentadore
 
 } 
 
-void AlocacaoChaves::contagem_criterio(int camada[linha_dados][linha_dados], int numeroestipulado)
+int AlocacaoChaves::contagem_criterio(int camada[linha_dados][linha_dados])
 {
-	int potencia = 0;
+	int num_crit = 0;
+	float num = 0;
+	float potencia = 0;
 
 	potencia = 0;
 
@@ -466,45 +473,93 @@ void AlocacaoChaves::contagem_criterio(int camada[linha_dados][linha_dados], int
 			{
 				if (camada[i][j] == ps.nof[k])
 				{
-					potencia =+ ps.s_nofr[k];
+					potencia += ps.s_nofr[k];
 				}
 			}
 
 		}
 	}
 
+	num = potencia / parametroCH_kW;
+
+	num_crit = round(num);
+
+	if (num_crit < 2) { num_crit = 2; }
+
 	//encontando o numero estipulado
-	numeroestipulado = potencia / parametroCH_kW;
+	return(num_crit);
 }
 
 void AlocacaoChaves::criterio_numero_de_chaves() //alterar conforme o numero de alimentadores, modificando quantas vezes cada funcao eh chamada
 {
-	contagem_criterio(fxp.camadaAL1, ac.numch_AL[1]);
-	contagem_criterio(fxp.camadaAL2, ac.numch_AL[2]);
-	contagem_criterio(fxp.camadaAL3, ac.numch_AL[3]);
-	contagem_criterio(fxp.camadaAL4, ac.numch_AL[4]);
-	contagem_criterio(fxp.camadaAL5, ac.numch_AL[5]);
-	contagem_criterio(fxp.camadaAL6, ac.numch_AL[6]);
-	contagem_criterio(fxp.camadaAL7, ac.numch_AL[7]);
-	contagem_criterio(fxp.camadaAL8, ac.numch_AL[8]);
+	ac.numch_AL[1] = contagem_criterio(fxp.camadaAL1);
+	ac.numch_AL[2] = contagem_criterio(fxp.camadaAL2);
+	ac.numch_AL[3] = contagem_criterio(fxp.camadaAL3);
+	ac.numch_AL[4] = contagem_criterio(fxp.camadaAL4);
+	ac.numch_AL[5] = contagem_criterio(fxp.camadaAL5);
+	ac.numch_AL[6] = contagem_criterio(fxp.camadaAL6);
+	ac.numch_AL[7] = contagem_criterio(fxp.camadaAL7);
+	ac.numch_AL[8] = contagem_criterio(fxp.camadaAL8);
 }
 
-/*
-void MetaheuristicaGVNS::primeiraalocacaosistema(int numch)
+void MetaheuristicaGVNS::sorteiochaves(int numch, int camada[linha_dados][linha_dados], int posicao_camada[linha_dados], int alimentador)
 {
-	//na primeira alocacao, temos as chaves sorteadas para cada alimentador
-
+	int sorteio_posicao = 0; //variavel com a posicao do vetor com as barras
 	int sorteio = 0; //variavel com o valor do sorteio
 	int cont = 0;
+	int x = 0; //auxiliar para as posicoes do vetor barras_al e do vetor posicao_barras_al
+	int barras_al[linha_dados]; //vetor com as barras do alimentador
+	int posicao_barras_al[linha_dados]; //posicao das barras do alimentador analisado
 
-	for (int i = 1; i < numch; i++)
+	//zerando vetores
+	for (int i = 0; i < linha_dados; i++)
+	{
+		barras_al[i] = 0;
+		posicao_barras_al[i] = 0;
+	}
+
+	//atribuindo as barras
+	x = 1;
+
+	for (int i = 1; i < linha_dados; i++)
+	{
+		for (int j = 1; j < linha_dados; j++)
+		{
+			if (camada[i][j] != alimentador && camada[i][j] != 0)
+			{
+				barras_al[x] = camada[i][j];
+				x++;
+			}
+		}
+	}
+
+	//posicao das barras
+	x = 1;
+
+	for (int i = 1; i < linha_dados; i++)
+	{
+		for (int j = 1; j < linha_dados; j++)
+		{
+			if (barras_al[i] == ps.nof[j] && ps.noi[j] != alimentador)
+			{
+				posicao_barras_al[x] = j;
+				x++;
+			}
+		}
+	}
+
+	//sorteio
+	for (int i = 1; i <= numch; i++)
 	{
 	dnv:
-		sorteio = rand() % (linha_dados - 1) + 1;
+		sorteio_posicao = rand() % x + 1;
 
-		if (i == 1 && ps.cadidato_aloc[sorteio] != 0)
+		sorteio = posicao_barras_al[sorteio_posicao];
+
+		if (sorteio == 0) { goto dnv; }
+		else if (i == 1 && ps.cadidato_aloc[sorteio] != 0)
 		{
-			ac.posicaochaves[i] = sorteio;
+			posicao_camada[i] = sorteio;
 		}
 		else if (ps.cadidato_aloc[sorteio] != 0)
 		{
@@ -513,27 +568,38 @@ void MetaheuristicaGVNS::primeiraalocacaosistema(int numch)
 			{
 				for (int j = 1; j < numch; j++)
 				{
-					if (ac.posicaochaves[k] == ac.posicaochaves[j] && ac.posicaochaves[j] != 0)
+					if (posicao_camada[k] == posicao_camada[j] && posicao_camada[j] != 0)
 					{
 						cont++;
 					}
 				}
 			}
-
 			if (cont >= i) { goto dnv; }
-			else { ac.posicaochaves[i] = sorteio; }
+			else { posicao_camada[i] = sorteio; }
 		}
 		else { goto dnv; }
 	}
 }
-*/
+
+void MetaheuristicaGVNS::primeiraaloc()
+{
+	sorteiochaves(ac.numch_AL[1], fxp.camadaAL1, ac.posicaochaves[1], a1);
+	sorteiochaves(ac.numch_AL[2], fxp.camadaAL2, ac.posicaochaves[2], a2);
+	sorteiochaves(ac.numch_AL[3], fxp.camadaAL3, ac.posicaochaves[3], a3);
+	sorteiochaves(ac.numch_AL[4], fxp.camadaAL4, ac.posicaochaves[4], a4);
+	sorteiochaves(ac.numch_AL[5], fxp.camadaAL5, ac.posicaochaves[5], a5);
+	sorteiochaves(ac.numch_AL[6], fxp.camadaAL6, ac.posicaochaves[6], a6);
+	sorteiochaves(ac.numch_AL[7], fxp.camadaAL7, ac.posicaochaves[7], a7);
+	sorteiochaves(ac.numch_AL[8], fxp.camadaAL8, ac.posicaochaves[8], a8);
+
+}
 
 //############################################################################################
 
 int main()
 {
 
-	srand(static_cast<unsigned int> (time(NULL)));	//faz a aleatoriedade com base no relogio
+	srand(static_cast <unsigned int> (time(NULL)));	//faz a aleatoriedade com base no relogio
 
 	//faz a leitura dos parametros do circuito
 	ps.leitura_parametros();
@@ -544,6 +610,11 @@ int main()
 	//tirando de pu, para conferir
 	fxp.valores_nominais_tensao();
 
-	//gvns.primeiraalocacaosistema();
+	//define quantas chaves serao alocadas em cada alimentador
+	ac.criterio_numero_de_chaves();
+
+	//primeira alocacao: esta eh feita de forma aleatoria
+	gvns.primeiraaloc();
+
 
 }
