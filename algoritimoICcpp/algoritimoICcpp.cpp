@@ -9,9 +9,9 @@
 #include <stdlib.h>
 #include <cmath>
 #include <complex>
-#include <vector>
+#include <tuple>
 
-// DADOS DO SISTEMA ---------------------------------------------------
+// DADOS DO SISTEMA DE 136 BARRAS ---------------------------------------
 
 //Dados para o arquivo txt
 #define linha_dados 157 //numero de linhas da matriz de dados +1
@@ -33,9 +33,6 @@
 
 //Chave a cada quantos kW?
 #define parametroCH_kW 1000;
-
-// dados dos condutores a serem usados (catálogo Nexans): 
-std::complex <float> t_raven = std::complex <float>(0.7208, 0.4186); //T-Raven 
 
 //Caracteristicas Fluxo de Potencia ------------------------------------
 
@@ -125,26 +122,46 @@ public:
 
 	int numch_AL[num_AL]; //numero de chaves por alimentador seguindo o criterio estipulado
 	int posicaochaves[num_AL][linha_dados]; //vetor com as posicoes das chaves
+	int adjacente_chaves[num_AL][linha_dados][linha_dados];
 
 
 	void criterio_numero_de_chaves();
+	void secoeschaves();
+	
 
 private:
 
 	int contagem_criterio(int camada[linha_dados][linha_dados]);
+	void adjacentes(int posicao[linha_dados], int adj[linha_dados][linha_dados]);
 
 }ac;
 
-class MetaheuristicaGVNS
+class GVNS
 {
 public:
-
+	
 	void primeiraaloc();
 
 private:
 
 	void sorteiochaves(int numch, int camada[linha_dados][linha_dados], int posicao_camada[linha_dados], int alimentador);
 }gvns;
+
+class RVNS:public GVNS
+{
+public:
+	int k = 2; //numero de vizinhança do RVNS
+
+}rvns;
+
+class VND:public GVNS
+{
+public:
+	int l = 2; //numero de vizinhança do VND
+
+
+}vnd;
+
 
 //------------------------------------------------------------
 
@@ -502,7 +519,59 @@ void AlocacaoChaves::criterio_numero_de_chaves() //alterar conforme o numero de 
 	ac.numch_AL[8] = contagem_criterio(fxp.camadaAL8);
 }
 
-void MetaheuristicaGVNS::sorteiochaves(int numch, int camada[linha_dados][linha_dados], int posicao_camada[linha_dados], int alimentador)
+void AlocacaoChaves::adjacentes(int posicao[linha_dados], int adj[linha_dados][linha_dados])
+{
+	int chave_i = 0; //chave: i e f é o ramo que estao
+	int chave_f = 0;
+	int contline = 0; //contador da linha
+	int contadorch = 0;
+	int aux = 0; //auxiliar nas barras
+
+	contline = 0;
+
+	for (int i = 1; i < linha_dados; i++)
+	{
+		contadorch = 1;
+
+		for (int j = 1; j < linha_dados; j++)
+		{
+			if (posicao[i] == j)
+			{
+				contline++;
+				adj[contline][contadorch] = ps.nof[j];
+
+				aux = 1;
+
+				while (aux != linha_dados)
+				{
+					//localizando adjacentes
+					for (int k = 1; k < linha_dados; k++)
+					{
+						if (ps.noi[k] == adj[contline][aux] && ps.cadidato_aloc[k] == 1)
+						{
+							contadorch++;
+							adj[contline][contadorch] = ps.nof[k];
+						}
+					}
+
+					aux++;
+				}
+			}
+		}
+		
+	}
+
+}
+
+void AlocacaoChaves::secoeschaves()
+{
+	for (int i = 1; i < num_AL; i++)
+	{
+		adjacentes(ac.posicaochaves[i], ac.adjacente_chaves[i]);
+	}
+}
+
+void GVNS::sorteiochaves(int numch, int camada[linha_dados][linha_dados], int posicao_camada[linha_dados], int alimentador)
 {
 	int sorteio_posicao = 0; //variavel com a posicao do vetor com as barras
 	int sorteio = 0; //variavel com o valor do sorteio
@@ -574,14 +643,17 @@ void MetaheuristicaGVNS::sorteiochaves(int numch, int camada[linha_dados][linha_
 					}
 				}
 			}
-			if (cont >= i) { goto dnv; }
+
+			cont--; //tira 1 para ficar pelo menos igual ao i
+
+			if (cont > i) { goto dnv; } //compara
 			else { posicao_camada[i] = sorteio; }
 		}
 		else { goto dnv; }
 	}
 }
 
-void MetaheuristicaGVNS::primeiraaloc()
+void GVNS::primeiraaloc() //alterar conforme o numero de alimentadores, modificando quantas vezes cada funcao eh chamada
 {
 	sorteiochaves(ac.numch_AL[1], fxp.camadaAL1, ac.posicaochaves[1], a1);
 	sorteiochaves(ac.numch_AL[2], fxp.camadaAL2, ac.posicaochaves[2], a2);
@@ -616,5 +688,10 @@ int main()
 	//primeira alocacao: esta eh feita de forma aleatoria
 	gvns.primeiraaloc();
 
+	//inicio do GVNS
+	ac.secoeschaves();
+
+	//05_02_2020
+	
 
 }
