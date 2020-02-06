@@ -22,14 +22,7 @@
 #define num_AL 9 //numero de alimentadores +1 por conta do cpp
 
 //alimentadores das subestações
-#define a1 1000 //alimentador 1
-#define a2 1001 //alimentador 2
-#define a3 1002 //alimentador 3
-#define a4 1003 //alimentador 4
-#define a5 1004 //alimentador 5
-#define a6 1005 //alimentador 6
-#define a7 1006 //alimentador 7
-#define a8 1007 //alimentador 8
+int alimentadores[num_AL] = {0, 1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007};
 
 //Chave a cada quantos kW?
 #define parametroCH_kW 1000;
@@ -87,15 +80,8 @@ class FluxoPotencia
 {
 public:
 
-	int camadaAL1[linha_dados][linha_dados];
-	int camadaAL2[linha_dados][linha_dados];
-	int camadaAL3[linha_dados][linha_dados];
-	int camadaAL4[linha_dados][linha_dados];
-	int camadaAL5[linha_dados][linha_dados];
-	int camadaAL6[linha_dados][linha_dados];
-	int camadaAL7[linha_dados][linha_dados];
-	int camadaAL8[linha_dados][linha_dados];
-
+	int camadaAL[num_AL][linha_dados][linha_dados];
+	
 	int conexao_predef[linha_dados][3];
 
 	std::complex <float> tensao_inicial = std::complex <float>(float(tensao_inicial_nos / vref), float(0)); // tensao complexa nos nós na 1 iteraçao do fluxo de potencia
@@ -123,17 +109,20 @@ public:
 	int numch_AL[num_AL]; //numero de chaves por alimentador seguindo o criterio estipulado
 	int posicaochaves[num_AL][linha_dados]; //vetor com as posicoes das chaves
 	int adjacente_chaves[num_AL][linha_dados][linha_dados];
+	int secoes_chaves[num_AL][linha_dados][linha_dados];
+	int chi[num_AL][linha_dados];
+	int chf[num_AL][linha_dados];
 
 
 	void criterio_numero_de_chaves();
-	void secoeschaves();
+	void secoes_alimentador();
 	
 
 private:
 
 	int contagem_criterio(int camada[linha_dados][linha_dados]);
-	void adjacentes(int posicao[linha_dados], int adj[linha_dados][linha_dados]);
-
+	void adjacentes(int posicao[linha_dados], int adj[linha_dados][linha_dados], int alimentador);
+	
 }ac;
 
 class GVNS
@@ -378,15 +367,10 @@ void FluxoPotencia::fluxo_potencia() //alterar conforme o numero de alimentadore
 
 	//definir as camadas de fxp.camadas de cada alimentador
 
-	camadas(a1, fxp.camadaAL1);
-	camadas(a2, fxp.camadaAL2);
-	camadas(a3, fxp.camadaAL3);
-	camadas(a4, fxp.camadaAL4);
-	camadas(a5, fxp.camadaAL5);
-	camadas(a6, fxp.camadaAL6);
-	camadas(a7, fxp.camadaAL7);
-	camadas(a8, fxp.camadaAL8);
-
+	for (int i = 1; i < num_AL; i++)
+	{
+		camadas(alimentadores[i], fxp.camadaAL[i]);
+	}
 
 	conexao_alimentadores(); //define as conexoes pre-existentes
 
@@ -423,25 +407,18 @@ void FluxoPotencia::fluxo_potencia() //alterar conforme o numero de alimentadore
 
 		//1 passo: BACKWARD
 
-		backward_sweep(fxp.camadaAL1);
-		backward_sweep(fxp.camadaAL2);
-		backward_sweep(fxp.camadaAL3);
-		backward_sweep(fxp.camadaAL4);
-		backward_sweep(fxp.camadaAL5);
-		backward_sweep(fxp.camadaAL6);
-		backward_sweep(fxp.camadaAL7);
-		backward_sweep(fxp.camadaAL8);
+		for (int i = 1; i < num_AL; i++)
+		{
+			backward_sweep(fxp.camadaAL[i]);
+		}
+		
 
 		//2 passo: FORWARD
 
-		forward_sweep(a1, fxp.camadaAL1);
-		forward_sweep(a2, fxp.camadaAL2);
-		forward_sweep(a3, fxp.camadaAL3);
-		forward_sweep(a4, fxp.camadaAL4);
-		forward_sweep(a5, fxp.camadaAL5);
-		forward_sweep(a6, fxp.camadaAL6);
-		forward_sweep(a7, fxp.camadaAL7);
-		forward_sweep(a8, fxp.camadaAL8);
+		for (int i = 1; i < num_AL; i++)
+		{
+			forward_sweep(alimentadores[i], fxp.camadaAL[i]);
+		}
 
 		//comparação de critério satisfeito
 
@@ -509,20 +486,14 @@ int AlocacaoChaves::contagem_criterio(int camada[linha_dados][linha_dados])
 
 void AlocacaoChaves::criterio_numero_de_chaves() //alterar conforme o numero de alimentadores, modificando quantas vezes cada funcao eh chamada
 {
-	ac.numch_AL[1] = contagem_criterio(fxp.camadaAL1);
-	ac.numch_AL[2] = contagem_criterio(fxp.camadaAL2);
-	ac.numch_AL[3] = contagem_criterio(fxp.camadaAL3);
-	ac.numch_AL[4] = contagem_criterio(fxp.camadaAL4);
-	ac.numch_AL[5] = contagem_criterio(fxp.camadaAL5);
-	ac.numch_AL[6] = contagem_criterio(fxp.camadaAL6);
-	ac.numch_AL[7] = contagem_criterio(fxp.camadaAL7);
-	ac.numch_AL[8] = contagem_criterio(fxp.camadaAL8);
+	for (int i = 1; i < num_AL; i++)
+	{
+		ac.numch_AL[i] = contagem_criterio(fxp.camadaAL[i]);
+	}
 }
 
-void AlocacaoChaves::adjacentes(int posicao[linha_dados], int adj[linha_dados][linha_dados])
+void AlocacaoChaves::adjacentes(int posicao[linha_dados], int adj[linha_dados][linha_dados], int alimentador)
 {
-	int chave_i = 0; //chave: i e f é o ramo que estao
-	int chave_f = 0;
 	int contline = 0; //contador da linha
 	int contadorch = 0;
 	int aux = 0; //auxiliar nas barras
@@ -558,17 +529,105 @@ void AlocacaoChaves::adjacentes(int posicao[linha_dados], int adj[linha_dados][l
 				}
 			}
 		}
-		
+
 	}
 
+
+	//agora pega a secao do alimentador
+	
+	contadorch = 1; //coloca o contador na primeira posicao
+
+	for (int j = 1; j < linha_dados; j++)
+	{
+		if (alimentador == ps.noi[j])
+		{
+			contline++;
+			adj[contline][contadorch] = ps.nof[j];
+
+			aux = 1;
+
+			while (aux != linha_dados)
+			{
+				//localizando adjacentes
+				for (int k = 1; k < linha_dados; k++)
+				{
+					if (ps.noi[k] == adj[contline][aux] && ps.cadidato_aloc[k] == 1)
+					{
+						contadorch++;
+						adj[contline][contadorch] = ps.nof[k];
+					}
+				}
+
+				aux++;
+			}
+		}
+	}
 }
 
-void AlocacaoChaves::secoeschaves()
+void AlocacaoChaves::secoes_alimentador()
 {
+	int cont_ch[num_AL][linha_dados]; //contador de barras das chaves
+	int cont = 0; //contador
+	int pos = 0;
+	
+	
+	//encontrando todos os adjacentes
 	for (int i = 1; i < num_AL; i++)
 	{
-		adjacentes(ac.posicaochaves[i], ac.adjacente_chaves[i]);
+		adjacentes(ac.posicaochaves[i], ac.adjacente_chaves[i], alimentadores[i]);
 	}
+
+	//zera contadores 
+	for (int i = 1; i < num_AL; i++)
+	{
+		for (int j = 1; j < linha_dados; j++)
+		{
+			cont_ch[i][j] = 0;
+		}
+	}
+
+	cont = 0;
+
+	//determina qual das chaves tem mais barras adjacentes
+	for (int i = 1; i < num_AL; i++)
+	{
+		for (int j = 1; j < linha_dados; j++)
+		{
+			for (int k = 1; k < linha_dados; k++)
+			{
+				if (ac.adjacente_chaves[i][j][k] != 0)
+				{
+					cont++;
+				}
+			}
+			cont_ch[i][j] = cont;
+			cont = 0;
+		}
+	}
+		
+	//agora apagar os repetidos em outra matriz
+	
+
+	for (int i = 1; i < num_AL; i++)
+	{
+		//pegando a maior
+		cont = 0;
+		pos = 1;
+
+		for (int j = 1; j < linha_dados; j++)
+		{
+			if (cont < cont_ch[i][j])
+			{
+				cont = cont_ch[i][j];
+				pos = j;
+			}
+		}
+
+		cont_ch[i][pos] = 0;
+
+
+	}
+
 }
 
 void GVNS::sorteiochaves(int numch, int camada[linha_dados][linha_dados], int posicao_camada[linha_dados], int alimentador)
@@ -655,14 +714,11 @@ void GVNS::sorteiochaves(int numch, int camada[linha_dados][linha_dados], int po
 
 void GVNS::primeiraaloc() //alterar conforme o numero de alimentadores, modificando quantas vezes cada funcao eh chamada
 {
-	sorteiochaves(ac.numch_AL[1], fxp.camadaAL1, ac.posicaochaves[1], a1);
-	sorteiochaves(ac.numch_AL[2], fxp.camadaAL2, ac.posicaochaves[2], a2);
-	sorteiochaves(ac.numch_AL[3], fxp.camadaAL3, ac.posicaochaves[3], a3);
-	sorteiochaves(ac.numch_AL[4], fxp.camadaAL4, ac.posicaochaves[4], a4);
-	sorteiochaves(ac.numch_AL[5], fxp.camadaAL5, ac.posicaochaves[5], a5);
-	sorteiochaves(ac.numch_AL[6], fxp.camadaAL6, ac.posicaochaves[6], a6);
-	sorteiochaves(ac.numch_AL[7], fxp.camadaAL7, ac.posicaochaves[7], a7);
-	sorteiochaves(ac.numch_AL[8], fxp.camadaAL8, ac.posicaochaves[8], a8);
+
+	for (int i = 1; i < num_AL; i++)
+	{
+		sorteiochaves(ac.numch_AL[i], fxp.camadaAL[i], ac.posicaochaves[i], alimentadores[i]);
+	}
 
 }
 
@@ -689,9 +745,22 @@ int main()
 	gvns.primeiraaloc();
 
 	//inicio do GVNS
-	ac.secoeschaves();
 
-	//05_02_2020
+	//primeiras chaves
+	for (int i = 1; i < num_AL; i++)
+	{
+		for (int j = 1; j < linha_dados; j++)
+		{
+			ac.chi[i][j] = ps.noi[ac.posicaochaves[i][j]];
+			ac.chf[i][j] = ps.nof[ac.posicaochaves[i][j]];
+		}
+	}
+
+	ac.secoes_alimentador();
+
+	
+
+	//05_02_2020 ---------------------------------
 	
 
 }
