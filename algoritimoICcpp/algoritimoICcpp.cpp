@@ -624,8 +624,8 @@ void AlocacaoChaves::secoes_alimentador()
 
 	for (int i = 1; i < num_AL; i++)
 	{
-		int xx = 1;
-	
+		int xx = 0;
+		xx = 0;
 	agn:
 
 		//pegando a maior
@@ -652,89 +652,127 @@ void AlocacaoChaves::secoes_alimentador()
 			}
 			goto agn;
 		}
-	}
 
-}
+		//aproveitar para colocar as barras adjacentes da chave em ordem
 
-void GVNS::sorteiochaves(int numch, int camada[linha_dados][linha_dados], int posicao_camada[linha_dados], int alimentador)
-{
-	int sorteio_posicao = 0; //variavel com a posicao do vetor com as barras
-	int sorteio = 0; //variavel com o valor do sorteio
-	int cont = 0;
-	int x = 0; //auxiliar para as posicoes do vetor barras_al e do vetor posicao_barras_al
-	int barras_al[linha_dados]; //vetor com as barras do alimentador
-	int posicao_barras_al[linha_dados]; //posicao das barras do alimentador analisado
-
-	//zerando vetores
-	for (int i = 0; i < linha_dados; i++)
-	{
-		barras_al[i] = 0;
-		posicao_barras_al[i] = 0;
-	}
-
-	//atribuindo as barras
-	x = 1;
-
-	for (int i = 1; i < linha_dados; i++)
-	{
+		//zerar para nao ter problemas futuros
 		for (int j = 1; j < linha_dados; j++)
 		{
-			if (camada[i][j] != alimentador && camada[i][j] != 0)
+			for (int k = 1; k < linha_dados; k++)
 			{
-				barras_al[x] = camada[i][j];
-				x++;
+				ac.adjacente_chaves[i][j][k] = 0;
 			}
+
 		}
-	}
 
-	//posicao das barras
-	x = 1;
-
-	for (int i = 1; i < linha_dados; i++)
-	{
+		//ordenando...
 		for (int j = 1; j < linha_dados; j++)
 		{
-			if (barras_al[i] == ps.nof[j] && ps.noi[j] != alimentador)
+			for (int k = 1; k < linha_dados; k++)
 			{
-				posicao_barras_al[x] = j;
-				x++;
+				ac.adjacente_chaves[i][j][k] = ac.secoes_chaves[i][j][k];
 			}
+
 		}
-	}
 
-	//sorteio
-	for (int i = 1; i <= numch; i++)
-	{
-	dnv:
-		sorteio_posicao = rand() % x + 1;
+		//agora sim, zerar os repetidos da array ac.adjacente_chaves[][][]
 
-		sorteio = posicao_barras_al[sorteio_posicao];
-
-		if (sorteio == 0) { goto dnv; }
-		else if (i == 1 && ps.cadidato_aloc[sorteio] != 0)
+		for (int j = 2; j < linha_dados; j++)
 		{
-			posicao_camada[i] = sorteio;
-		}
-		else if (ps.cadidato_aloc[sorteio] != 0)
-		{
-			cont = 0;
-			for (int k = 1; k < numch; k++)
+			//o j=2 porque a primeira vai ser a secao do alimentador
+
+			for (int k = 1; k < linha_dados; k++)
 			{
-				for (int j = 1; j < numch; j++)
+				//
+				for (int p = 1; p < linha_dados; p++)
 				{
-					if (posicao_camada[k] == posicao_camada[j] && posicao_camada[j] != 0)
+					if (ac.secoes_chaves[i][j - 1][k] == ac.secoes_chaves[i][j][p])
 					{
-						cont++;
+						ac.secoes_chaves[i][j - 1][k] = 0;
 					}
 				}
 			}
 
-			cont--; //tira 1 para ficar pelo menos igual ao i
-
-			if (cont > i) { goto dnv; } //compara
-			else { posicao_camada[i] = sorteio; }
 		}
-		else { goto dnv; }
+	}
+}
+
+void GVNS::sorteiochaves(int numch, int camada[linha_dados][linha_dados], int posicao_camada[linha_dados], int alimentador)
+{
+	int barras_camada[linha_dados];
+	int aux = 0;
+	int sort = 0;
+	bool atribuir = false; //variavel auxiliar
+
+	//zera barra_camada
+	for (int i = 1; i < linha_dados; i++)
+	{
+		barras_camada[i] = 0;
+	}
+
+	//atribui as barras do alimentador
+	aux = 1;
+
+	for (int i = 1; i < linha_dados; i++)
+	{
+		for (int j = 1; j < linha_dados; j++)
+		{
+			if (camada[i][j] != 0)
+			{
+				barras_camada[aux] = camada[i][j];
+				aux++;
+			}
+		}
+	}
+
+	//sorteia
+sorteio:
+	for (int i = 1; i <= numch; i++)
+	{
+	rand_dnv:
+		sort = rand() % aux + 1;
+
+		sort = barras_camada[sort];
+
+		if (sort != 0)
+		{
+			//localizar posicao
+			for (int j = 1; j < linha_dados; j++)
+			{
+				if (sort == ps.nof[j] && ps.cadidato_aloc[j] == 1 && ps.noi[j] != alimentador)
+				{
+					posicao_camada[i] = j;
+					atribuir = true;
+				}
+			}
+
+			if (atribuir == false)
+			{
+				goto rand_dnv;
+			}
+		}
+		else
+		{
+			goto rand_dnv;
+		}
+	}
+
+	//analisa se as tres sao diferentes
+	aux = 0;
+	for (int i = 1; i < linha_dados; i++)
+	{
+		for (int j = 1; j < linha_dados; j++)
+		{
+			if (posicao_camada[i] == posicao_camada[j] && posicao_camada[i] != 0 && i != j)
+			{
+				aux = 1;
+			}
+		}		
+	}
+
+	if (aux == 1)
+	{
+		goto sorteio;
 	}
 }
 
