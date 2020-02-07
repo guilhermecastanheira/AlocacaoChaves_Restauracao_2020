@@ -730,6 +730,9 @@ sorteio:
 	for (int i = 1; i <= numch; i++)
 	{
 	rand_dnv:
+
+		atribuir = false;
+
 		sort = rand() % aux + 1;
 
 		sort = barras_camada[sort];
