@@ -570,7 +570,19 @@ void AlocacaoChaves::secoes_alimentador()
 	int cont = 0; //contador
 	int pos = 0;
 	
-	
+	//zerar matrizes dos adjacentes
+	for (int i = 1; i < num_AL; i++)
+	{
+		for (int j = 1; j < linha_dados; j++)
+		{
+			for (int k = 1; k < linha_dados; k++)
+			{
+				ac.secoes_chaves[i][j][k] = 0;
+				ac.adjacente_chaves[i][j][k] = 0;
+			}
+		}
+	}
+
 	//encontrando todos os adjacentes
 	for (int i = 1; i < num_AL; i++)
 	{
@@ -585,6 +597,8 @@ void AlocacaoChaves::secoes_alimentador()
 			cont_ch[i][j] = 0;
 		}
 	}
+
+	//
 
 	cont = 0;
 
@@ -604,12 +618,16 @@ void AlocacaoChaves::secoes_alimentador()
 			cont = 0;
 		}
 	}
-		
-	//agora apagar os repetidos em outra matriz
+
+	//coloca em ordem a matriz antes de zerar
 	
 
 	for (int i = 1; i < num_AL; i++)
 	{
+		int xx = 1;
+	
+	agn:
+
 		//pegando a maior
 		cont = 0;
 		pos = 1;
@@ -624,8 +642,16 @@ void AlocacaoChaves::secoes_alimentador()
 		}
 
 		cont_ch[i][pos] = 0;
+		xx++;
 
-
+		if (cont != 0)
+		{
+			for (int j = 1; j < linha_dados; j++)
+			{
+				ac.secoes_chaves[i][xx][j] = ac.adjacente_chaves[i][pos][j];
+			}
+			goto agn;
+		}
 	}
 
 }
