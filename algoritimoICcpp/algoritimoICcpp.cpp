@@ -90,13 +90,13 @@ public:
 	std::complex <float> tensao_pu[linha_dados];
 
 	void valores_nominais_tensao();
+	void conexao_alimentadores();
 	void fluxo_potencia();
 
 
 private:
 
 	void camadas(int alimentador, int camadaalimentador[linha_dados][linha_dados]);
-	void conexao_alimentadores();
 	void backward_sweep(int camadaAL[linha_dados][linha_dados]);
 	void forward_sweep(int alimentador, int camada[linha_dados][linha_dados]);
 
@@ -116,6 +116,7 @@ public:
 
 	void criterio_numero_de_chaves();
 	void secoes_alimentador();
+	void calculo_funcao_objetivo();
 	
 
 private:
@@ -244,13 +245,15 @@ void FluxoPotencia::camadas(int alimentador, int camadaalimentador[linha_dados][
 void FluxoPotencia::conexao_alimentadores()
 {
 	// ramos pre existentes no sistema, seria as linhas tracejadas no sistema
-
+	int x = 0;
+	x = 0;
 	for (int i = 1; i < linha_dados; i++)
 	{
 		if (ps.cadidato_aloc[i] == 0)
 		{
-			fxp.conexao_predef[i][1] = ps.noi[i];
-			fxp.conexao_predef[i][2] = ps.nof[i];
+			fxp.conexao_predef[x][1] = ps.noi[i];
+			fxp.conexao_predef[x][2] = ps.nof[i];
+			x++;
 		}
 	}
 }
@@ -371,8 +374,6 @@ void FluxoPotencia::fluxo_potencia() //alterar conforme o numero de alimentadore
 	{
 		camadas(alimentadores[i], fxp.camadaAL[i]);
 	}
-
-	conexao_alimentadores(); //define as conexoes pre-existentes
 
 	//tensoes iniciais nas barras
 
@@ -692,7 +693,45 @@ void AlocacaoChaves::secoes_alimentador()
 					}
 				}
 			}
+		}
+	}
+}
 
+void AlocacaoChaves::calculo_funcao_objetivo()
+{
+	float comprimento_secao = 0.0;
+	float potencia_W = 0.0;
+
+	fxp.conexao_alimentadores(); //define as conexoes pre-existentes
+
+	//deve-se analisar todas as secoes
+
+	//alimentador i
+	for (int i = 1; i < num_AL; i++)
+	{
+		//secao j
+		for (int j = 1; j < linha_dados; j++)
+		{
+			comprimento_secao = 0.0;
+			potencia_W = 0.0;
+
+			//analise comprimento e potencia nao suprida
+			for (int k = 1; k < linha_dados; k++)
+			{
+				//comprimento
+				for (int y = 1; y < linha_dados; y++)
+				{
+					if (ac.secoes_chaves[i][j][k] == ps.nof[y])
+					{
+						comprimento_secao = comprimento_secao + ps.dist_no[y];
+					}
+				}
+
+				//potencia nao suprida
+				
+
+
+			}
 		}
 	}
 }
@@ -703,6 +742,7 @@ void GVNS::sorteiochaves(int numch, int camada[linha_dados][linha_dados], int po
 	int aux = 0;
 	int sort = 0;
 	bool atribuir = false; //variavel auxiliar
+	bool igual = false;
 
 	//zera barra_camada
 	for (int i = 1; i < linha_dados; i++)
@@ -761,19 +801,19 @@ sorteio:
 	}
 
 	//analisa se as tres sao diferentes
-	aux = 0;
+	igual = false;
 	for (int i = 1; i < linha_dados; i++)
 	{
 		for (int j = 1; j < linha_dados; j++)
 		{
 			if (posicao_camada[i] == posicao_camada[j] && posicao_camada[i] != 0 && i != j)
 			{
-				aux = 1;
+				igual = true;
 			}
 		}		
 	}
 
-	if (aux == 1)
+	if (igual == true)
 	{
 		goto sorteio;
 	}
@@ -824,6 +864,8 @@ int main()
 	}
 
 	ac.secoes_alimentador();
+
+	ac.calculo_funcao_objetivo();
 
 	
 
