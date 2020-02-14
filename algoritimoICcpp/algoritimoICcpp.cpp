@@ -10,6 +10,8 @@
 #include <cmath>
 #include <complex>
 #include <tuple>
+#include <vector>
+#include <string>
 
 // DADOS DO SISTEMA DE 136 BARRAS ---------------------------------------
 
@@ -20,12 +22,17 @@
 //Caracteristicas -----------------------------------------------------
 
 #define num_AL 9 //numero de alimentadores +1 por conta do cpp
+#define estado_restaurativo_pu 0.93 //tensao minima no estado restaurativo
 
 //alimentadores das subestações
 int alimentadores[num_AL] = {0, 1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007};
 
 //Chave a cada quantos kW?
 #define parametroCH_kW 1000;
+
+//Parametros Funcao objetivo
+#define tempo_falha 4 //numero de horas que o sistema fica em estado restaurativo
+#define taxa_falhas 0.065 //taxa de falhas por km no ano
 
 //Caracteristicas Fluxo de Potencia ------------------------------------
 
@@ -121,9 +128,10 @@ public:
 
 private:
 
-	int contagem_criterio(int camada[linha_dados][linha_dados]);
-	void adjacentes(int posicao[linha_dados], int adj[linha_dados][linha_dados], int alimentador);
-	
+	int contagem_criterio(int camada[linha_dados][linha_dados]); //criterio para a contagem de quantas chaves alocar em cada alimentador do sistema teste
+	void adjacentes(int posicao[linha_dados], int adj[linha_dados][linha_dados], int alimentador); //calcula os adjacentes das chaves e da secao do alimentador
+	float energia_nao_suprida(float potencia);
+
 }ac;
 
 class GVNS
@@ -697,10 +705,20 @@ void AlocacaoChaves::secoes_alimentador()
 	}
 }
 
+float AlocacaoChaves::energia_nao_suprida(float potencia)
+{
+
+}
+
 void AlocacaoChaves::calculo_funcao_objetivo()
 {
 	float comprimento_secao = 0.0;
 	float potencia_W = 0.0;
+	int barra_nao_sup[linha_dados];
+	std::vector <int> posicao;
+	std::string solucao = "factivel";
+
+	posicao.clear();
 
 	fxp.conexao_alimentadores(); //define as conexoes pre-existentes
 
@@ -715,6 +733,8 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 			comprimento_secao = 0.0;
 			potencia_W = 0.0;
 
+			// k = barras da seção j
+
 			//analise comprimento e potencia nao suprida
 			for (int k = 1; k < linha_dados; k++)
 			{
@@ -726,12 +746,75 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 						comprimento_secao = comprimento_secao + ps.dist_no[y];
 					}
 				}
-
-				//potencia nao suprida
-				
-
-
 			}
+			
+			//potencia nao suprida: nesta parte é necessario analisar se o alimentador adjacente consegue suprir a energia das seçoes adjacentes a chave
+			
+				// 1) isolar falha
+			for (int k = 1; k < linha_dados; k++)
+			{
+				for (int y = 1; y < linha_dados; y++)
+				{
+					if (ac.secoes_chaves[i][j][k] == ac.chf[i][y] || ac.secoes_chaves[i][j][k] == ac.chi[i][y])
+					{
+						ps.estado_swt[ac.posicaochaves[i][y]] = 0;
+					}
+				}
+			}
+				// 2) fechar chaves da reconfiguracao para adicionar cargas ao alimentador adjacente
+			for (int k = 1; k < linha_dados; k++)
+			{
+				for (int y = 1; y < linha_dados; y++)
+				{
+					if (ac.adjacente_chaves[i][j][k] == ps.nof[y] && ps.cadidato_aloc[y] == 0)
+					{
+						ps.estado_swt[y] = 1;
+						posicao.push_back(y);
+					}
+
+					if (ac.adjacente_chaves[i][j][k] == ps.noi[y] && ps.cadidato_aloc[y] == 0)
+					{
+						ps.estado_swt[y] = 1;
+						posicao.push_back(y);
+					}
+				}
+			}
+
+				// 3) fazer o fluxo de potencia
+			fxp.fluxo_potencia();
+
+			for (int y = 1; y < linha_dados; y++)
+			{
+				if (std::abs(fxp.tensao_pu[y]) < estado_restaurativo_pu)
+				{
+					solucao = "nao factivel";
+					break;
+				}
+			}
+
+			//analisar outras condicoes 
+			if (solucao == "nao factivel")
+			{
+				for (int y = 1; y <= posicao.size(); y++)
+				{
+					
+				}
+			}
+
+			if (solucao == "factivel")
+			{
+				for (int y = 1; y < linha_dados; y++)
+				{
+					for (int t = 1; t < linha_dados; t++)
+					{
+						if (ps.nof[y] == barra_nao_sup[t])
+						{
+
+						}
+					}
+				}
+			}
+			
 		}
 	}
 }
@@ -865,11 +948,8 @@ int main()
 
 	ac.secoes_alimentador();
 
-	ac.calculo_funcao_objetivo();
+	ac.calculo_funcao_objetivo(); //last edit
 
-	
-
-	//05_02_2020 ---------------------------------
-	
+	// last update: 14/02/2020
 
 }
