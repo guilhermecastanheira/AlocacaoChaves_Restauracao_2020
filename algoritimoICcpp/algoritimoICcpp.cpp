@@ -285,7 +285,7 @@ void FluxoPotencia::camadas(int alimentador, int camadaalimentador[linha_dados][
 
 			for (int k = 1; k < linha_dados; k++)
 			{
-				if (ps.nof[k] == camadaalimentador[x][y])
+				if (ps.nof[k] == camadaalimentador[i][j])
 				{
 					if (ps.estado_swt[k] == 1)
 					{
