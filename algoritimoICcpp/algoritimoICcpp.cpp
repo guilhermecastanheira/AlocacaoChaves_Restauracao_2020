@@ -24,9 +24,6 @@
 #define num_AL 9 //numero de alimentadores +1 por conta do cpp
 #define estado_restaurativo_pu 0.93 //tensao minima no estado restaurativo
 
-//alimentadores das subestações
-int alimentadores[num_AL] = {0, 1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007};
-
 //Chave a cada quantos kW?
 #define parametroCH_kW 1000;
 
@@ -48,6 +45,12 @@ float tensao_inicial_nos = 13800;
 //critério de convergencia do fluxo de potencia
 std::complex <float> criterio_conv = 1 * pow(10, -8);
 float epsilon = abs(criterio_conv);
+
+// Caracteristicas dos Alimentadores e Subestacoes ---------------------
+
+int alimentadores[num_AL] = { 0, 1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007 };
+float capSE[num_AL] = { 0, sref, sref, sref, sref, sref, sref, sref, sref };
+
 
 
 
@@ -73,6 +76,9 @@ public:
 
 	float dist_no[linha_dados]; //distancia entre nós
 
+	float total_ativa = 0;
+	std::complex <float> total_complexa = std::complex <float>(float (0.0), float (0.0));
+
 	std::complex <float> lt[linha_dados]; //linha de transmissao entre nós
 	std::complex <float> s_nof[linha_dados]; //potencia complexa do nof
 
@@ -80,6 +86,7 @@ public:
 	std::complex <float> pu_s_nof[linha_dados]; //potencia complexa do nof em pu
 
 	void leitura_parametros();
+	void somatorio_potencia();
 
 }ps;
 
@@ -130,7 +137,7 @@ private:
 
 	int contagem_criterio(int camada[linha_dados][linha_dados]); //criterio para a contagem de quantas chaves alocar em cada alimentador do sistema teste
 	void adjacentes(int posicao[linha_dados], int adj[linha_dados][linha_dados], int alimentador); //calcula os adjacentes das chaves e da secao do alimentador
-	float energia_nao_suprida(float potencia);
+	float energia_nao_suprida(int bar_aliment[linha_dados]); //aqui se calcula a energia nao suprida para o calculo da funcao objetivo e tambem calcula a capacidade da subestacao e as condicoes de estado restaurativo
 
 }ac;
 
@@ -204,9 +211,21 @@ void ParametrosSistema::leitura_parametros()
 	}
 }
 
+void ParametrosSistema::somatorio_potencia()
+{
+	//aqui se soma a potencia ativa total, complexa e ativa
+
+	for (int i = 1; i < linha_dados; i++)
+	{
+		ps.total_ativa = ps.total_ativa + ps.s_nofr[i];
+		ps.total_complexa = ps.total_complexa + ps.s_nof[i];
+	}
+}
+
 void FluxoPotencia::camadas(int alimentador, int camadaalimentador[linha_dados][linha_dados])
 {
 	//zerar camada 
+	bool add = false;
 
 	for (int i = 1; i < linha_dados; i++)
 	{
@@ -223,31 +242,76 @@ void FluxoPotencia::camadas(int alimentador, int camadaalimentador[linha_dados][
 	int x = 2;
 	int y = 1;
 
-	for (int k = 1; k < linha_dados; k++)
+	
+	add = false;
+	//checando se existe chaves abertas
+
+	for (int i = 1; i < linha_dados; i++)
 	{
-		for (int m = 1; m < linha_dados; m++)
+		for (int j = 1; j < linha_dados; j++)
 		{
-			for (int i = 1; i < linha_dados; i++)
+			//
+
+			add = false;
+
+			for (int k = 1; k < linha_dados; k++)
 			{
-
-				if (ps.noi[i] == camadaalimentador[k][m])
+				if (ps.noi[k] == camadaalimentador[i][j])
 				{
-					if (ps.estado_swt[i] == 1)
+					if (ps.estado_swt[k] == 1)
 					{
-						camadaalimentador[x][y] = ps.nof[i];
-						y += 1;
+						for (int m = 1; m < linha_dados; m++)
+						{
+							for (int p = 1; p < linha_dados; p++)
+							{
+								if (ps.nof[k] == camadaalimentador[m][p])
+								{
+									add = true; //ja tem o elemento na matriz
+								}
+							}
+						}
+
+						if (add == false)
+						{
+							camadaalimentador[x][y] = ps.nof[k];
+							y++;
+						}
+						
 					}
-
 				}
+			}
+			//
+			add = false;
 
+			for (int k = 1; k < linha_dados; k++)
+			{
+				if (ps.nof[k] == camadaalimentador[x][y])
+				{
+					if (ps.estado_swt[k] == 1)
+					{
+						for (int m = 1; m < linha_dados; m++)
+						{
+							for (int p = 1; p < linha_dados; p++)
+							{
+								if (ps.noi[k] == camadaalimentador[m][p])
+								{
+									add = true; //ja tem o elemento na matriz
+								}
+							}
+						}
 
+						if (add == false)
+						{
+							camadaalimentador[x][y] = ps.noi[k];
+							y++;
+						}
+					}
+				}
 			}
 		}
-
-		x += 1;
+		x++;
 		y = 1;
 	}
-
 }
 
 void FluxoPotencia::conexao_alimentadores()
@@ -705,8 +769,74 @@ void AlocacaoChaves::secoes_alimentador()
 	}
 }
 
-float AlocacaoChaves::energia_nao_suprida(float potencia)
+float AlocacaoChaves::energia_nao_suprida(int bar_aliment[linha_dados])
 {
+	//aqui se calcula a energia nao suprida para o calculo da funcao objetivo e tambem calcula a capacidade da subestacao e as condicoes de estado restaurativo
+
+	float potencia = 0;
+	float potencia_nsup = 0;
+	std::complex <float> capacidadeSE = std::complex <float>(0, 0);
+	std::string analise = "dentro do limite";
+
+	potencia = 0.0;
+	potencia_nsup = 0.0;
+	analise = "dentro do limite";
+
+	for (int y = 1; y < linha_dados; y++)
+	{
+		if (std::abs(fxp.tensao_pu[y]) < estado_restaurativo_pu)
+		{
+			analise = "fora do limite";
+			break;
+		}
+	}
+
+	for (int i = 1; i < num_AL; i++)
+	{
+		capacidadeSE.real(0.0);
+		capacidadeSE.imag(0.0);
+
+		for (int j = 1; j < linha_dados; j++)
+		{
+			for (int k = 1; k < linha_dados; k++)
+			{
+				for (int t = 1; t < linha_dados; t++)
+				{
+					if (fxp.camadaAL[i][j][k] == ps.nof[t] && fxp.camadaAL[i][j][k] != 0)
+					{
+						potencia += ps.s_nofr[t];
+						capacidadeSE += ps.s_nof[t];
+					}
+				}
+			}
+		}
+
+		if (std::abs(capacidadeSE) > capSE[i])
+		{
+			analise = "fora do limite";
+		}
+	}
+
+	if (analise == "dentro do limite")
+	{
+		potencia_nsup = ps.total_ativa - potencia;
+	}
+	else
+	{
+		//se nao estiver nas condiçoes, deve-se desligar o alimentador da falta
+		for (int i = 1; i < linha_dados; i++)
+		{
+			for (int j = 1; j < linha_dados; j++)
+			{
+				if (bar_aliment[i] == ps.nof[j])
+				{
+					potencia_nsup += ps.nof[j];
+				}
+			}
+		}
+	}
+
+	return(potencia_nsup);
 
 }
 
@@ -714,11 +844,11 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 {
 	float comprimento_secao = 0.0;
 	float potencia_W = 0.0;
-	int barra_nao_sup[linha_dados];
 	std::vector <int> posicao;
-	std::string solucao = "factivel";
-
+	std::vector <float> potencia_nao_suprida;
+	
 	posicao.clear();
+	potencia_nao_suprida.clear();
 
 	fxp.conexao_alimentadores(); //define as conexoes pre-existentes
 
@@ -768,53 +898,34 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 				{
 					if (ac.adjacente_chaves[i][j][k] == ps.nof[y] && ps.cadidato_aloc[y] == 0)
 					{
-						ps.estado_swt[y] = 1;
 						posicao.push_back(y);
 					}
 
 					if (ac.adjacente_chaves[i][j][k] == ps.noi[y] && ps.cadidato_aloc[y] == 0)
 					{
-						ps.estado_swt[y] = 1;
 						posicao.push_back(y);
 					}
 				}
 			}
 
-				// 3) fazer o fluxo de potencia
-			fxp.fluxo_potencia();
-
-			for (int y = 1; y < linha_dados; y++)
+				// 3) fazer o fluxo de potencia, para todas as condições das chaves de remanejamento de cargas
+			for (int y = 0; y <= posicao.size(); y++)
 			{
-				if (std::abs(fxp.tensao_pu[y]) < estado_restaurativo_pu)
-				{
-					solucao = "nao factivel";
-					break;
-				}
-			}
+					ps.estado_swt[posicao[y]] = 1;
 
-			//analisar outras condicoes 
-			if (solucao == "nao factivel")
-			{
-				for (int y = 1; y <= posicao.size(); y++)
-				{
-					
-				}
-			}
+					fxp.fluxo_potencia();
 
-			if (solucao == "factivel")
-			{
-				for (int y = 1; y < linha_dados; y++)
-				{
-					for (int t = 1; t < linha_dados; t++)
-					{
-						if (ps.nof[y] == barra_nao_sup[t])
-						{
+					potencia_W = energia_nao_suprida(ac.adjacente_chaves[i][1]);
 
-						}
-					}
-				}
+					potencia_nao_suprida.push_back(potencia_W);
+
+					ps.estado_swt[posicao[y]] = 0;
 			}
 			
+			
+
+
+
 		}
 	}
 }
@@ -921,6 +1032,9 @@ int main()
 
 	//faz a leitura dos parametros do circuito
 	ps.leitura_parametros();
+
+	//somatorio da potencia total do sistema
+	ps.somatorio_potencia();
 
 	//resolve o fluxo de potencia
 	fxp.fluxo_potencia();
