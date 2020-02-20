@@ -1,6 +1,6 @@
 ﻿  algoritimoICcpp.cpp
 C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(37,12): warning C4244: 'inicializando': conversão de 'double' para 'float', possível perda de dados
 C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(46,40): warning C4244: 'argumento': conversão de 'double' para 'const std::complex<float>::_Ty', possível perda de dados
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(552,18): warning C4244: '=': conversão de 'float' para 'int', possível perda de dados
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(912,22): warning C4018: '<=': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(554,18): warning C4244: '=': conversão de 'float' para 'int', possível perda de dados
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(914,22): warning C4018: '<=': incompatibilidade de signed/unsigned
   algoritimoICcpp.vcxproj -> C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\Debug\algoritimoICcpp.exe

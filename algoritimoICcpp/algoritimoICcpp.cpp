@@ -244,70 +244,72 @@ void FluxoPotencia::camadas(int alimentador, int camadaalimentador[linha_dados][
 
 	
 	add = false;
-	//checando se existe chaves abertas
+	//montando matriz adjacente
 
 	for (int i = 1; i < linha_dados; i++)
 	{
 		for (int j = 1; j < linha_dados; j++)
 		{
-			//
-
-			add = false;
-
-			for (int k = 1; k < linha_dados; k++)
+			if (j != 0)
 			{
-				if (ps.noi[k] == camadaalimentador[i][j])
+				for (int k = 1; k < linha_dados; k++)
 				{
-					if (ps.estado_swt[k] == 1)
+					add = false;
+
+					if (ps.noi[k] == camadaalimentador[i][j])
 					{
-						for (int m = 1; m < linha_dados; m++)
+						if (ps.estado_swt[k] == 1)
 						{
-							for (int p = 1; p < linha_dados; p++)
+							for (int m = 1; m < linha_dados; m++)
 							{
-								if (ps.nof[k] == camadaalimentador[m][p])
+								for (int p = 1; p < linha_dados; p++)
 								{
-									add = true; //ja tem o elemento na matriz
+									if (ps.nof[k] == camadaalimentador[m][p])
+									{
+										add = true; //ja tem o elemento na matriz
+									}
 								}
 							}
-						}
 
-						if (add == false)
-						{
-							camadaalimentador[x][y] = ps.nof[k];
-							y++;
-						}
-						
-					}
-				}
-			}
-			//
-			add = false;
-
-			for (int k = 1; k < linha_dados; k++)
-			{
-				if (ps.nof[k] == camadaalimentador[i][j])
-				{
-					if (ps.estado_swt[k] == 1)
-					{
-						for (int m = 1; m < linha_dados; m++)
-						{
-							for (int p = 1; p < linha_dados; p++)
+							if (add == false)
 							{
-								if (ps.noi[k] == camadaalimentador[m][p])
-								{
-									add = true; //ja tem o elemento na matriz
-								}
+								camadaalimentador[x][y] = ps.nof[k];
+								y++;
 							}
-						}
 
-						if (add == false)
-						{
-							camadaalimentador[x][y] = ps.noi[k];
-							y++;
 						}
 					}
 				}
-			}
+				//
+
+				for (int k = 1; k < linha_dados; k++)
+				{
+					add = false;
+
+					if (ps.nof[k] == camadaalimentador[i][j])
+					{
+						if (ps.estado_swt[k] == 1)
+						{
+							for (int m = 1; m < linha_dados; m++)
+							{
+								for (int p = 1; p < linha_dados; p++)
+								{
+									if (ps.noi[k] == camadaalimentador[m][p])
+									{
+										add = true; //ja tem o elemento na matriz
+									}
+								}
+							}
+
+							if (add == false)
+							{
+								camadaalimentador[x][y] = ps.noi[k];
+								y++;
+							}
+						}
+					}
+				}
+			}		
 		}
 		x++;
 		y = 1;
