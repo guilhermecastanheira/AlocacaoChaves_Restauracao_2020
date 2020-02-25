@@ -39,8 +39,8 @@ float vref = 13800; //13.8kV
 float zref = (vref * vref) / sref;
 float iref = sref / vref;
 
-//tensao inicial nos nós do sistema
-float tensao_inicial_nos = 13800;
+//tensao inicial nos nós do sistema: vref * (valor para dar a tensao inicial)
+float tensao_inicial_nos = vref * 1.05;
 
 //critério de convergencia do fluxo de potencia
 std::complex <float> criterio_conv = 1 * pow(10, -8);
@@ -376,7 +376,7 @@ void FluxoPotencia::backward_sweep(int camadaAL[linha_dados][linha_dados])
 void FluxoPotencia::forward_sweep(int alimentador, int camada[linha_dados][linha_dados])
 {
 
-	std::complex <float> unit = 1.0; //complexo 1|0°_
+	std::complex <float> unit = fxp.tensao_inicial; //complexo 1|0°_
 
 	//atribuindo a tensao para o restante dos nós
 
@@ -804,7 +804,7 @@ float AlocacaoChaves::energia_nao_suprida(int bar_aliment[linha_dados])
 			{
 				for (int t = 1; t < linha_dados; t++)
 				{
-					if (fxp.camadaAL[i][j][k] == ps.nof[t] && fxp.camadaAL[i][j][k] != 0)
+					if (fxp.camadaAL[i][j][k] == ps.nof[t] && fxp.camadaAL[i][j][k] != 0 && fxp.tensao_pu[t] != fxp.tensao_inicial)
 					{
 						potencia += ps.s_nofr[t];
 						capacidadeSE += ps.s_nof[t];
