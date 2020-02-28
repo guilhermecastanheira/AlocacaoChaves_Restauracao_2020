@@ -132,12 +132,14 @@ public:
 	void secoes_alimentador();
 	void calculo_funcao_objetivo();
 	
+	
 
 private:
 
 	int contagem_criterio(int camada[linha_dados][linha_dados]); //criterio para a contagem de quantas chaves alocar em cada alimentador do sistema teste
 	void adjacentes(int posicao[linha_dados], int adj[linha_dados][linha_dados], int alimentador); //calcula os adjacentes das chaves e da secao do alimentador
 	float energia_nao_suprida(int bar_aliment[linha_dados]); //aqui se calcula a energia nao suprida para o calculo da funcao objetivo e tambem calcula a capacidade da subestacao e as condicoes de estado restaurativo
+	float FO(float potencia_secao, float comprimeto_secao);
 
 }ac;
 
@@ -376,7 +378,7 @@ void FluxoPotencia::backward_sweep(int camadaAL[linha_dados][linha_dados])
 void FluxoPotencia::forward_sweep(int alimentador, int camada[linha_dados][linha_dados])
 {
 
-	std::complex <float> unit = fxp.tensao_inicial; //complexo 1|0°_
+	std::complex <float> unit = fxp.tensao_inicial; //complexo 
 
 	//atribuindo a tensao para o restante dos nós
 
@@ -778,18 +780,22 @@ float AlocacaoChaves::energia_nao_suprida(int bar_aliment[linha_dados])
 	float potencia = 0;
 	float potencia_nsup = 0;
 	std::complex <float> capacidadeSE = std::complex <float>(0, 0);
+	std::vector <int> posicoes_menor_estREST;
 	std::string analise = "dentro do limite";
 
 	potencia = 0.0;
 	potencia_nsup = 0.0;
 	analise = "dentro do limite";
+	posicoes_menor_estREST.clear();
+
+analise_potencia_nao_suprida: //aqui começa a se analisar a potencia nao suprida
 
 	for (int y = 1; y < linha_dados; y++)
 	{
 		if (std::abs(fxp.tensao_pu[y]) < estado_restaurativo_pu)
 		{
 			analise = "fora do limite";
-			break;
+			posicoes_menor_estREST.push_back(y);	
 		}
 	}
 
@@ -825,7 +831,30 @@ float AlocacaoChaves::energia_nao_suprida(int bar_aliment[linha_dados])
 	}
 	else
 	{
-		//se nao estiver nas condiçoes, deve-se desligar o alimentador da falta
+		//analisar qual chave pode ser aberta para diminuir a ENS
+		for (int i = 0; i <= posicoes_menor_estREST.size(); i++)
+		{
+			for (int j = 1; j < num_AL; j++)
+			{
+				for (int k = 1; k < linha_dados; k++)
+				{
+					if (ps.nof[posicoes_menor_estREST[i]] == ac.chf[j][k] || ps.nof[posicoes_menor_estREST[i]] == ac.chi[j][k] || ps.noi[posicoes_menor_estREST[i]] == ac.chf[j][k] || ps.noi[posicoes_menor_estREST[i]] == ac.chi[j][k])
+					{
+						if (ps.estado_swt[posicoes_menor_estREST[i]] != 0)
+						{
+							ps.estado_swt[posicoes_menor_estREST[i]] = 0;
+
+							fxp.fluxo_potencia(); //separa as camadas e faz o fluxo novamente
+
+							//assim, temos que voltar ao inicio para nova analise
+						}
+					}
+				}
+				
+			}
+		}
+		
+		//Ao executar este passo, não tem mais jeito... se nao estiver nas condiçoes, deve-se desligar o alimentador da falta, isso implica em somar todas as potencias
 		for (int i = 1; i < linha_dados; i++)
 		{
 			for (int j = 1; j < linha_dados; j++)
@@ -838,7 +867,14 @@ float AlocacaoChaves::energia_nao_suprida(int bar_aliment[linha_dados])
 		}
 	}
 
+	posicoes_menor_estREST.clear();
+
 	return(potencia_nsup);
+
+}
+
+float AlocacaoChaves::FO(float potencia_secao, float comprimento )
+{
 
 }
 
@@ -923,8 +959,25 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 
 					ps.estado_swt[posicao[y]] = 0;
 			}
+
+			//apos analisar todas as possiveis ligacoes, pega-se a de melhor resultado
+
+			potencia_W = potencia_nao_suprida[0]; //primeiro valor encontrado
+
+			//realizando a comparacao para ver qual o maior
+			for (int y = 0; y <= potencia_nao_suprida.size(); y++)
+			{
+				if (potencia_nao_suprida[y] <= potencia_W)
+				{
+					potencia_W = potencia_nao_suprida[y];
+				}
+			}
+
+			//deve-se calcular a funcao objetivo com os resultados obtidos
 			
-			
+			//limpar vetores comparadores
+			posicao.clear();
+			potencia_nao_suprida.clear();
 
 
 
