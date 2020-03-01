@@ -29,7 +29,9 @@
 
 //Parametros Funcao objetivo
 #define tempo_falha 4 //numero de horas que o sistema fica em estado restaurativo
+#define tempo_isolacao 0.06 //tempo necessario para fazer as manobras em horas
 #define taxa_falhas 0.065 //taxa de falhas por km no ano
+#define custoKWh 0.12 // em real 0.53187 (cotação 2017 ANEEL - Elektro - Sudeste)
 
 //Caracteristicas Fluxo de Potencia ------------------------------------
 
@@ -43,7 +45,7 @@ float iref = sref / vref;
 float tensao_inicial_nos = vref * 1.05;
 
 //critério de convergencia do fluxo de potencia
-std::complex <float> criterio_conv = 1 * pow(10, -8);
+std::complex <float> criterio_conv = 1 * pow(10, -5);
 float epsilon = abs(criterio_conv);
 
 // Caracteristicas dos Alimentadores e Subestacoes ---------------------
@@ -51,6 +53,13 @@ float epsilon = abs(criterio_conv);
 int alimentadores[num_AL] = { 0, 1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007 };
 float capSE[num_AL] = { 0, sref, sref, sref, sref, sref, sref, sref, sref };
 
+//NOTAS:
+/*
+- chaves no estado aberto eh considerado 0
+- chaves fechadas é considerado 1
+
+
+*/
 
 
 
@@ -139,7 +148,7 @@ private:
 	int contagem_criterio(int camada[linha_dados][linha_dados]); //criterio para a contagem de quantas chaves alocar em cada alimentador do sistema teste
 	void adjacentes(int posicao[linha_dados], int adj[linha_dados][linha_dados], int alimentador); //calcula os adjacentes das chaves e da secao do alimentador
 	float energia_nao_suprida(int bar_aliment[linha_dados]); //aqui se calcula a energia nao suprida para o calculo da funcao objetivo e tambem calcula a capacidade da subestacao e as condicoes de estado restaurativo
-	float FO(float potencia_secao, float comprimeto_secao);
+	float FO(float potencia_secao, float comprimeto_secao, float ens_isolacao);
 
 }ac;
 
@@ -832,7 +841,7 @@ analise_potencia_nao_suprida: //aqui começa a se analisar a potencia nao suprid
 	else
 	{
 		//analisar qual chave pode ser aberta para diminuir a ENS
-		for (int i = 0; i <= posicoes_menor_estREST.size(); i++)
+		for (int i = 0; i < posicoes_menor_estREST.size(); i++)
 		{
 			for (int j = 1; j < num_AL; j++)
 			{
@@ -873,15 +882,24 @@ analise_potencia_nao_suprida: //aqui começa a se analisar a potencia nao suprid
 
 }
 
-float AlocacaoChaves::FO(float potencia_secao, float comprimento )
+float AlocacaoChaves::FO(float potencia_secao, float comprimento, float ens_isolacao )
 {
+	float resultado = 0.0;
 
+	resultado = (taxa_falhas * comprimento * (potencia_secao * custoKWh * tempo_falha)) + (ens_isolacao*tempo_isolacao);
+
+	return(resultado);
 }
 
 void AlocacaoChaves::calculo_funcao_objetivo()
 {
 	float comprimento_secao = 0.0;
 	float potencia_W = 0.0;
+	float valorFO = 0.0;
+	float chamadaFO = 0.0;
+	float potencia_isolacao = 0.0;
+
+	bool condicaoFOR = true;
 	std::vector <int> posicao;
 	std::vector <float> potencia_nao_suprida;
 	
@@ -898,8 +916,26 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 		//secao j
 		for (int j = 1; j < linha_dados; j++)
 		{
+
+			//ver se vale a pena fazer o laço, se o vetor estiver zerado é só custo computacional a toa
+			condicaoFOR = false;
+
+			for (int k = 0; k < linha_dados; k++)
+			{
+				if (ac.secoes_chaves[i][j][k] != 0)
+				{
+					condicaoFOR = true;
+					break;
+				}
+			}
+
+			if (condicaoFOR == false) { continue; }
+
+			//////////////////////
+
 			comprimento_secao = 0.0;
 			potencia_W = 0.0;
+			potencia_isolacao = 0.0;
 
 			// k = barras da seção j
 
@@ -929,6 +965,18 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 					}
 				}
 			}
+			
+			for (int k = 1; k < linha_dados; k++)
+			{
+				for (int t = 1; t < linha_dados; t++)
+				{
+					if (ac.secoes_chaves[i][j][k] == ps.nof[t])
+					{
+						ps.estado_swt[t] = 0;
+					}
+				}
+			}
+
 				// 2) fechar chaves da reconfiguracao para adicionar cargas ao alimentador adjacente
 			for (int k = 1; k < linha_dados; k++)
 			{
@@ -947,42 +995,95 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 			}
 
 				// 3) fazer o fluxo de potencia, para todas as condições das chaves de remanejamento de cargas
-			for (int y = 0; y <= posicao.size(); y++)
+			for (int y = 0; y < posicao.size(); y++)
 			{
-					ps.estado_swt[posicao[y]] = 1;
+				ps.estado_swt[posicao[y]] = 1;
 
-					fxp.fluxo_potencia();
+				//porem existem excessoes:
+				for (int k = 1; k < linha_dados; k++)
+				{
+					if (ac.secoes_chaves[i][j][k] == ps.nof[posicao[y]] || ac.secoes_chaves[i][j][k] == ps.nof[posicao[y]])
+					{
+						ps.estado_swt[posicao[y]] = 0;
+					}
+				}
 
-					potencia_W = energia_nao_suprida(ac.adjacente_chaves[i][1]);
+				//rodar o fluxo de potencia
+				fxp.fluxo_potencia();
 
-					potencia_nao_suprida.push_back(potencia_W);
+				//calcular a energia nao suprida
+				potencia_W = energia_nao_suprida(ac.adjacente_chaves[i][1]);
 
-					ps.estado_swt[posicao[y]] = 0;
+				//jogar no vetor de comparacao
+				potencia_nao_suprida.push_back(potencia_W);
+
+				//voltar a chave de remanejamento para estado aberto
+				ps.estado_swt[posicao[y]] = 0;
 			}
 
 			//apos analisar todas as possiveis ligacoes, pega-se a de melhor resultado
 
-			potencia_W = potencia_nao_suprida[0]; //primeiro valor encontrado
-
-			//realizando a comparacao para ver qual o maior
-			for (int y = 0; y <= potencia_nao_suprida.size(); y++)
+			//4) E se não houver remanejamento??? tera que desligar toda a secao
+			if (posicao.size() == 0)
 			{
-				if (potencia_nao_suprida[y] <= potencia_W)
+				for (int k = 1; k < linha_dados; k++)
 				{
-					potencia_W = potencia_nao_suprida[y];
+					for (int y = 1; y < linha_dados; y++)
+					{
+						if (ac.secoes_chaves[i][j][k] == ps.nof[y])
+						{
+							potencia_W = potencia_W + ps.s_nofr[y];
+						}
+					}
+				}
+			}
+			else
+			{
+				//tem chave para remanejamento
+				potencia_W = potencia_nao_suprida[0]; //primeiro valor encontrado
+
+				//realizando a comparacao para ver qual o maior
+				for (int y = 0; y < potencia_nao_suprida.size(); y++)
+				{
+					if (potencia_nao_suprida[y] <= potencia_W)
+					{
+						potencia_W = potencia_nao_suprida[y];
+					}
+				}
+			}
+			
+			//calculando a potencia da seção para isolar
+			for (int k = 1; k < linha_dados; k++)
+			{
+				for (int y = 1; y < linha_dados; y++)
+				{
+					if (ac.adjacente_chaves[i][1][k] == ps.nof[y]) //pegar a subestação inteira
+					{
+						potencia_isolacao = potencia_isolacao + ps.s_nofr[y];
+					}
 				}
 			}
 
-			//deve-se calcular a funcao objetivo com os resultados obtidos
-			
+			//se a potencia de isolação for igual a potencia_W, significa que nao adianta fazer as manobras, sendo assim, zerar a potencia de isolacao
+			if (potencia_W == potencia_isolacao)
+			{
+				potencia_isolacao = 0.0;
+			}
+
 			//limpar vetores comparadores
 			posicao.clear();
 			potencia_nao_suprida.clear();
 
+			//deve-se calcular a funcao objetivo com os resultados obtidos
+			chamadaFO = ac.FO(potencia_W, comprimento_secao, potencia_isolacao);
+			valorFO = valorFO + chamadaFO;
 
-
+			//se deve ler os parametros novamente para nao zerar tudo
+			ps.leitura_parametros();
 		}
 	}
+
+	std::cout <<"FO: " << valorFO << std::endl;
 }
 
 void GVNS::sorteiochaves(int numch, int camada[linha_dados][linha_dados], int posicao_camada[linha_dados], int alimentador)
@@ -1119,6 +1220,7 @@ int main()
 
 	ac.calculo_funcao_objetivo(); //last edit
 
-	// last update: 14/02/2020
+
+	// last update: 01/03/2020 - começar a fazer as vizinhanças
 
 }
