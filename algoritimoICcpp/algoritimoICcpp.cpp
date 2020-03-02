@@ -5,11 +5,8 @@
 
 #include <iostream>
 #include <time.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <cmath>
 #include <complex>
-#include <tuple>
 #include <vector>
 #include <string>
 
@@ -799,6 +796,9 @@ float AlocacaoChaves::energia_nao_suprida(int bar_aliment[linha_dados])
 
 analise_potencia_nao_suprida: //aqui começa a se analisar a potencia nao suprida
 
+	fxp.fluxo_potencia(); //separa as camadas e faz o fluxo novamente
+
+	//analisa se existe algo fora
 	for (int y = 1; y < linha_dados; y++)
 	{
 		if (std::abs(fxp.tensao_pu[y]) < estado_restaurativo_pu)
@@ -851,11 +851,9 @@ analise_potencia_nao_suprida: //aqui começa a se analisar a potencia nao suprid
 					{
 						if (ps.estado_swt[posicoes_menor_estREST[i]] != 0)
 						{
-							ps.estado_swt[posicoes_menor_estREST[i]] = 0;
+							ps.estado_swt[posicoes_menor_estREST[i]] = 0; //fecha a chave de manobra
 
-							fxp.fluxo_potencia(); //separa as camadas e faz o fluxo novamente
-
-							//assim, temos que voltar ao inicio para nova analise
+							goto analise_potencia_nao_suprida;//assim, temos que voltar ao inicio para nova analise	
 						}
 					}
 				}
@@ -1009,7 +1007,7 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 				}
 
 				//rodar o fluxo de potencia
-				fxp.fluxo_potencia();
+				//fxp.fluxo_potencia();
 
 				//calcular a energia nao suprida
 				potencia_W = energia_nao_suprida(ac.adjacente_chaves[i][1]);
