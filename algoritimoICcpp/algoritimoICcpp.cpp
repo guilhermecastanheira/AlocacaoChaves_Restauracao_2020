@@ -154,7 +154,7 @@ private:
 
 	int contagem_criterio(int camada[linha_dados][linha_dados]); //criterio para a contagem de quantas chaves alocar em cada alimentador do sistema teste
 	void adjacentes(int posicao[linha_dados], int adj[linha_dados][linha_dados], int alimentador); //calcula os adjacentes das chaves e da secao do alimentador
-	float energia_nao_suprida(int bar_aliment[linha_dados], int secaoAL[linha_dados][linha_dados]); //aqui se calcula a energia nao suprida para o calculo da funcao objetivo e tambem calcula a capacidade da subestacao e as condicoes de estado restaurativo
+	float energia_nao_suprida(int bar_aliment[linha_dados]); //aqui se calcula a energia nao suprida para o calculo da funcao objetivo e tambem calcula a capacidade da subestacao e as condicoes de estado restaurativo
 	float FO(float potencia_secao, float comprimeto_secao, float ens_isolacao);
 
 }ac;
@@ -805,28 +805,19 @@ void AlocacaoChaves::secoes_alimentador()
 	}
 }
 
-float AlocacaoChaves::energia_nao_suprida(int bar_aliment[linha_dados], int secaoAL[linha_dados][linha_dados])
+float AlocacaoChaves::energia_nao_suprida(int bar_aliment[linha_dados])
 {
 	//aqui se calcula a energia nao suprida para o calculo da funcao objetivo e tambem calcula a capacidade da subestacao e as condicoes de estado restaurativo
 	
-	int aux_pula = 0;
 	float potencia = 0;
 	float potencia_nsup = 0;
 	complex <float> capacidadeSE = complex <float>(0, 0);
-	vector <int> posicoes_menor_estREST;
 	string analise = "dentro do limite";
-
-
-	aux_pula = 0;
-
-
-analise_potencia_nao_suprida: //aqui começa a se analisar a potencia nao suprida
-
 
 	potencia = 0.0;
 	potencia_nsup = 0.0;
 	analise = "dentro do limite";
-	posicoes_menor_estREST.clear();
+
 
 	fxp.fluxo_potencia(); //separa as camadas e faz o fluxo novamente
 
@@ -835,12 +826,9 @@ analise_potencia_nao_suprida: //aqui começa a se analisar a potencia nao suprid
 	{
 		if (abs(fxp.tensao_pu[y]) < estado_restaurativo_pu)
 		{
-			analise = "fora do limite";
-			posicoes_menor_estREST.push_back(y);	
+			analise = "fora do limite";	
 		}
 	}
-
-	
 
 	for (int i = 1; i < num_AL; i++)
 	{
@@ -871,72 +859,26 @@ analise_potencia_nao_suprida: //aqui começa a se analisar a potencia nao suprid
 	if (analise == "dentro do limite")
 	{
 		potencia_nsup = ps.total_ativa - potencia;
-
-		if (aux_pula == 0)
-		{
-			ac.pula_etapa = true;
-		}
 	}
 	else
 	{
-		aux_pula++;
+		//somar toda a potencia do alimentador
+	
+		potencia_nsup = 0.0;
 
-		//para o caso de nao ficar com os padores restaurativo
-		if (posicoes_menor_estREST.size() != 0)
+		for (int i = 1; i < linha_dados; i++)
 		{
-			//analisar qual chave pode ser aberta para diminuir a ENS
-			for (int i = 0; i < num_AL; i++)
+			for (int j = 1; j < linha_dados; j++)
 			{
-				for (int j = 1; j < linha_dados; j++)
+				if (bar_aliment[i] == ps.nof[j])
 				{
-
-					for (int t = 0; t < posicoes_menor_estREST.size(); t++)
-					{
-						if (secaoAL[i][j] == posicoes_menor_estREST[t])
-						{
-							//se a barra com problemas estiver dentro da seção, zerar ela
-							for (int k = 1; k < linha_dados; k++)
-							{
-								for (int y = 1; y < linha_dados; y++)
-								{
-									if (secaoAL[i][k] == ps.nof[y])
-									{
-										ps.estado_swt[y] = 0; //fecha-se as chaves
-									}
-								}
-							}
-
-
-						}
-					}
-
-
+					potencia_nsup += ps.nof[j];
 				}
 			}
-
-			goto analise_potencia_nao_suprida;
 		}
 		
-		else
-		{
-			//ou as posssibilidades de chaveamento acabaram, ou atingiu o limite da SE, deve-se desligar toda a subestação
-
-			potencia_nsup = 0.0;
-
-			for (int i = 1; i < linha_dados; i++)
-			{
-				for (int j = 1; j < linha_dados; j++)
-				{
-					if (bar_aliment[i] == ps.nof[j])
-					{
-						potencia_nsup += ps.nof[j];
-					}
-				}
-			}
-		}
 	}
 
-	posicoes_menor_estREST.clear();
 
 	return(potencia_nsup);
 
@@ -1064,25 +1006,19 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 								}
 							}
 						}
-						
 					}
 				}
-	
-				if (posicao.size() != 0)
-				{
-					analise_remanejamento.push_back(posicao);
-				}
-				
-				posicao.clear();
 			}
 
 			// 3) agora se analisa a ENS
-			
-			for (int k = 0; k < analise_remanejamento.size(); k++)
+			for (int y=0;y<posicao.size();y++)
 			{
-				fazer a matriz
-			}
+			
+				ps.estado_swt[posicao[y]] = 0;
 
+				potencia_nao_suprida.push_back(energia_nao_suprida(ac.adjacente_chaves[i][1]));
+
+			}
 
 			
 			ps.leitura_parametros();
