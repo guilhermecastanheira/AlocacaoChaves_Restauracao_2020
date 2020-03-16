@@ -10,6 +10,7 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+#include <iterator>
 
 using namespace std;
 
@@ -841,7 +842,7 @@ float AlocacaoChaves::energia_nao_suprida(int bar_aliment[linha_dados])
 			{
 				for (int t = 1; t < linha_dados; t++)
 				{
-					if (fxp.camadaAL[i][j][k] == ps.nof[t] && fxp.camadaAL[i][j][k] != 0 && fxp.tensao_pu[t] != fxp.tensao_inicial)
+					if (fxp.camadaAL[i][j][k] == ps.nof[t] && fxp.camadaAL[i][j][k] != 0 && ps.estado_swt[t] == 1)
 					{
 						potencia += ps.s_nofr[t];
 						capacidadeSE += ps.s_nof[t];
@@ -888,7 +889,19 @@ float AlocacaoChaves::FO(float potencia_secao, float comprimento, float ens_isol
 {
 	float resultado = 0.0;
 
-	resultado = (taxa_falhas * comprimento * (potencia_secao * custoKWh * tempo_falha)) + (ens_isolacao*tempo_isolacao);
+	if (ens_isolacao == potencia_secao)
+	{
+		//neste caso, nao adianta fazer manobras, a secao ficará desligada durante todo o processo de falta
+
+		resultado = taxa_falhas * comprimento * (ens_isolacao * custoKWh * tempo_falha);
+	}
+	else
+	{
+		//neste caso, adianta o chaveamento, entao, terá o remanejamento de cargas
+
+		resultado = (taxa_falhas * comprimento * (potencia_secao * custoKWh * tempo_falha)) + (ens_isolacao * tempo_isolacao);
+	}
+	
 
 	return(resultado);
 }
@@ -901,6 +914,8 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 	float chamadaFO = 0.0;
 	float potencia_isolacao = 0.0;
 	float ENSotima = 0.0;
+
+	vector<float>::iterator it;
 
 	bool condicaoFOR = true;
 	vector <int> posicao;
@@ -941,6 +956,7 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 			comprimento_secao = 0.0;
 			potencia_W = 0.0;
 			potencia_isolacao = 0.0;
+			ENSotima = 0.0;
 
 			// k = barras da seção j
 
@@ -988,39 +1004,85 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 			// 2b) ver quais chaves para remanejamento podem ser abertas
 			for (int h = 1; h < linha_dados; h++) // secao h
 			{
-				for (int k = 1; k < linha_dados; k++) //barra k
+				if (h != j)
 				{
-					for (int y = 1; y < linha_dados; y++)
+					for (int k = 1; k < linha_dados; k++) //barra k
 					{
-						if (h != j && ac.secoes_chaves[i][h][k] != 0 && fxp.conexao_predef[y][1] != 0 && fxp.conexao_predef[y][2] != 0) //nao remaneja cargas para a secao que esta sendo analisada
+						for (int y = 1; y < linha_dados; y++)
 						{
-							if (ac.secoes_chaves[i][h][k] == fxp.conexao_predef[y][1] || ac.secoes_chaves[i][h][k] == fxp.conexao_predef[y][2])
+							if (ac.secoes_chaves[i][h][k] != 0 && fxp.conexao_predef[y][1] != 0 && fxp.conexao_predef[y][2] != 0) //nao remaneja cargas para a secao que esta sendo analisada
 							{
-								//se as secoes adjacentes possuem ligaçoes que podem ser remanejadas
-								for (int z = 1; z < linha_dados; z++)
+								if (ac.secoes_chaves[i][h][k] == fxp.conexao_predef[y][1] || ac.secoes_chaves[i][h][k] == fxp.conexao_predef[y][2])
 								{
-									if ((ps.noi[z] == fxp.conexao_predef[y][1] && ps.nof[z] == fxp.conexao_predef[y][2]) || (ps.nof[z] == fxp.conexao_predef[y][1] && ps.noi[z] == fxp.conexao_predef[y][2]))
+									//se as secoes adjacentes possuem ligaçoes que podem ser remanejadas
+									for (int z = 1; z < linha_dados; z++)
 									{
-										posicao.push_back(z);
+										if ((ps.noi[z] == fxp.conexao_predef[y][1] && ps.nof[z] == fxp.conexao_predef[y][2]) || (ps.nof[z] == fxp.conexao_predef[y][1] && ps.noi[z] == fxp.conexao_predef[y][2]))
+										{
+											posicao.push_back(z);
+										}
 									}
 								}
 							}
 						}
 					}
+
+
+
 				}
 			}
 
+
+
 			// 3) agora se analisa a ENS
-			for (int y=0;y<posicao.size();y++)
+			for (int y = 0; y < posicao.size(); y++)
 			{
 			
+				ps.estado_swt[posicao[y]] = 1;
+
+				potencia_W = energia_nao_suprida(ac.adjacente_chaves[i][1]);
+
 				ps.estado_swt[posicao[y]] = 0;
 
-				potencia_nao_suprida.push_back(energia_nao_suprida(ac.adjacente_chaves[i][1]));
+				potencia_nao_suprida.push_back(potencia_W);
 
+				if (abs(potencia_W - ENSotima) < 0.01)
+				{
+					break;
+				}
 			}
 
-			
+			// 4) agora pega a menor ENS encontrada
+
+			if (posicao.size() != 0)
+			{
+				potencia_W = potencia_nao_suprida[0];
+
+				for (int y = 0; y < potencia_nao_suprida.size(); y++)
+				{
+					if (potencia_W > potencia_nao_suprida[y])
+					{
+						potencia_W = potencia_nao_suprida[y];
+					}
+				}
+
+			}
+			else
+			{
+				potencia_W = ENSotima;				
+			}
+		
+			posicao.clear();
+			potencia_nao_suprida.clear(); //limpa os vetores
+
+
+			// 5) chamando a funcao objetivo
+			chamadaFO = 0.0;
+
+			chamadaFO = FO(potencia_W, comprimento_secao, potencia_isolacao);
+
+			valorFO += chamadaFO;
+	
 			ps.leitura_parametros();
 		}
 	}
