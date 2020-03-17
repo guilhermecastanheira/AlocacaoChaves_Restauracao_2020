@@ -915,14 +915,13 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 	float potencia_isolacao = 0.0;
 	float ENSotima = 0.0;
 
-	vector<float>::iterator it;
+	vector<int>::iterator it;
 
 	bool condicaoFOR = true;
 	vector <int> posicao;
 	vector <float> potencia_nao_suprida;
 	vector <int> secao;
-	vector <vector <int>> analise_remanejamento;
-
+	vector <int> analise_remanejamento;
 	
 	posicao.clear();
 	potencia_nao_suprida.clear();
@@ -1026,23 +1025,22 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 							}
 						}
 					}
-
-
-
 				}
 			}
+
+			// 2c) analisando o remanejamento, como deverá ser feito
 
 
 
 			// 3) agora se analisa a ENS
-			for (int y = 0; y < posicao.size(); y++)
+			for (int y = 0; y < analise_remanejamento.size(); y++)
 			{
 			
-				ps.estado_swt[posicao[y]] = 1;
+				ps.estado_swt[analise_remanejamento[y]] = 1;
 
 				potencia_W = energia_nao_suprida(ac.adjacente_chaves[i][1]);
 
-				ps.estado_swt[posicao[y]] = 0;
+				ps.estado_swt[analise_remanejamento[y]] = 0;
 
 				potencia_nao_suprida.push_back(potencia_W);
 
@@ -1054,7 +1052,7 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 
 			// 4) agora pega a menor ENS encontrada
 
-			if (posicao.size() != 0)
+			if (analise_remanejamento.size() != 0)
 			{
 				potencia_W = potencia_nao_suprida[0];
 
@@ -1069,10 +1067,21 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 			}
 			else
 			{
-				potencia_W = ENSotima;				
+				for (int y = 1; y < linha_dados; y++)
+				{
+					for (int h = 1; h < linha_dados; h++)
+					{
+						if (ps.nof[h] == ac.adjacente_chaves[i][j][y])
+						{
+							potencia_W = potencia_W + ps.s_nofr[h];
+						}
+					}
+				}
 			}
 		
+			analise_remanejamento.clear();
 			posicao.clear();
+			secao.clear();
 			potencia_nao_suprida.clear(); //limpa os vetores
 
 
