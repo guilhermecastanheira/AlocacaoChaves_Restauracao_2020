@@ -921,12 +921,14 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 	vector <int> posicao;
 	vector <float> potencia_nao_suprida;
 	vector <int> secao;
-	vector <int> cenario;
+	vector <vector<int>> cenario;
 	vector <vector<int>> camada;
 	vector <vector<int>> analise_remanejamento;
+	vector <vector<int>> remanej_cargas;
 	
 	posicao.clear();
 	potencia_nao_suprida.clear();
+	remanej_cargas.clear();
 
 	//deve-se analisar todas as secoes para os valores da funcao obj
 
@@ -1009,9 +1011,9 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 				{
 					for (int o = 1; o < linha_dados; o++)
 					{
-						if (fxp.camadaAL[i][y][t] != 0 && ac.secoes_chaves[i][j][o] && ac.secoes_chaves[i][j][o] != 0)
+						if (fxp.camadaAL[i][y][t] != 0 && fxp.camadaAL[i][y][t] == ac.secoes_chaves[i][j][o] && ac.secoes_chaves[i][j][o] != 0)
 						{
-							fxp.camadaAL[i][y][y] = 0;
+							fxp.camadaAL[i][y][t] = 0;
 						}
 					}
 				}
@@ -1029,18 +1031,17 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 				secao.clear();
 			}
 
-			secao.clear();
 		
+			secao.clear();
+
 			//separando as secoes
 			for (auto& linhacamada: camada)
 			{
-				itr = linhacamada.begin();
-
 				itr = unique(linhacamada.begin(), linhacamada.end());
 
 				linhacamada.resize(distance(linhacamada.begin(),itr));
 
-				if (linhacamada.size() != 1)
+				if (linhacamada.size() > 1)
 				{
 					for (auto& colunacamada : linhacamada)
 					{
@@ -1057,22 +1058,21 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 						analise_remanejamento.push_back(secao);
 						secao.clear();
 					}
-				}
-				
+				}	
 			}
 
 			int contador = 0;
-			analise_remanejamento.clear();
+			secao.clear();
 
 			//depois de separadas as secoes, ver quais necessitam de remanejamento
 			for (auto& linha : analise_remanejamento)
 			{
-				contador = 0;
-
 				itr = find(linha.begin(), linha.end(), alimentadores[i]);
 
 				if (itr == linha.end())
 				{
+					contador = 0;
+
 					for (auto& coluna : linha)
 					{
 						for (int y = 1; y < linha_dados; y++)
@@ -1089,66 +1089,83 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 
 					if (contador <= 1)
 					{
-						analise_remanejamento.push_back(linha);
+						cenario.push_back(secao);
+						secao.clear();
+					}
+					else
+					{
+						secao.insert(secao.end(), linha.begin(), linha.end());
 					}
 				}
 			}
 
-
-			/*
-			for (int h = 1; h < linha_dados; h++) // secao h
+			if (secao.size() != 0)
 			{
-				if (h != j)
+				cenario.push_back(secao);
+			}
+
+
+			//encontrando remanejamento
+			analise_remanejamento.clear();
+			int r1 = 0;
+			int r2 = 0;
+
+			for (auto& line : cenario)
+			{
+				for (auto& col : line)
 				{
-					for (int k = 1; k < linha_dados; k++) //barra k
+					for (int y = 1; y < linha_dados; y++)
 					{
-						for (int y = 1; y < linha_dados; y++)
+						if (fxp.conexao_predef[y][1] != 0 && fxp.conexao_predef[y][2] != 0)
 						{
-							if (ac.secoes_chaves[i][h][k] != 0 && fxp.conexao_predef[y][1] != 0 && fxp.conexao_predef[y][2] != 0) //nao remaneja cargas para a secao que esta sendo analisada
+							if (col == fxp.conexao_predef[y][1] || col == fxp.conexao_predef[y][2])
 							{
-								if (ac.secoes_chaves[i][h][k] == fxp.conexao_predef[y][1] || ac.secoes_chaves[i][h][k] == fxp.conexao_predef[y][2])
+								r1 = fxp.conexao_predef[y][1];
+								r2 = fxp.conexao_predef[y][2];
+
+								for (int t = 1; t < linha_dados; t++)
 								{
-									//se as secoes adjacentes possuem ligaçoes que podem ser remanejadas
-									for (int z = 1; z < linha_dados; z++)
+									if (r1 == ps.noi[t] && r2 == ps.nof[t])
 									{
-										if ((ps.noi[z] == fxp.conexao_predef[y][1] && ps.nof[z] == fxp.conexao_predef[y][2]) || (ps.nof[z] == fxp.conexao_predef[y][1] && ps.noi[z] == fxp.conexao_predef[y][2]))
-										{
-											posicao.push_back(z);
-										}
+										posicao.push_back(t);
 									}
 								}
 							}
 						}
+					
 					}
 				}
+
+				remanej_cargas.push_back(posicao);
+				posicao.clear();
 			}
 
-			
-			*/
-			
 
 			// 3) agora se analisa a ENS
-			for (int y = 0; y < analise_remanejamento.size(); y++)
+
+			if (remanej_cargas.size() == 1)
 			{
-			
-				ps.estado_swt[analise_remanejamento[y]] = 1;
-
-				potencia_W = energia_nao_suprida(ac.adjacente_chaves[i][1]);
-
-				ps.estado_swt[analise_remanejamento[y]] = 0;
-
-				potencia_nao_suprida.push_back(potencia_W);
-
-				if (abs(potencia_W - ENSotima) < 0.01)
+				//somente uma opcao para remanejamento de cada vez
+				for (auto& linha : remanej_cargas)
 				{
-					break;
+					for (auto& coluna : linha)
+					{
+						ps.estado_swt[coluna] = 1;
+
+						potencia_W = energia_nao_suprida(ac.adjacente_chaves[i][j]);
+
+						ps.estado_swt[coluna] = 0;
+
+						potencia_nao_suprida.push_back(potencia_W);
+
+						if (abs(potencia_W - ENSotima) < 0.01)
+						{
+							break;
+						}
+					}
 				}
-			}
 
-			// 4) agora pega a menor ENS encontrada
-
-			if (analise_remanejamento.size() != 0)
-			{
+				//selecionando menor ENS encontrada
 				potencia_W = potencia_nao_suprida[0];
 
 				for (int y = 0; y < potencia_nao_suprida.size(); y++)
@@ -1158,10 +1175,11 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 						potencia_W = potencia_nao_suprida[y];
 					}
 				}
-
 			}
-			else
+			else if(remanej_cargas.size() == 0)
 			{
+				//sem opcoes de remanejamento, a potencia é a potencia do adjacentes a chave
+
 				for (int y = 1; y < linha_dados; y++)
 				{
 					for (int h = 1; h < linha_dados; h++)
@@ -1173,8 +1191,74 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 					}
 				}
 			}
-		
+			else
+			{
+				//mais de um chaveamento
+				int vb[linha_dados];
+				vector <int> vetorAUX;
+				vector <float> ENS;
+				
+				for (auto& linha : remanej_cargas)
+				{
+					vetorAUX = linha;
+
+					for (int t = linha.size(); t < linha_dados; t++)
+					{
+						vetorAUX[t] = 0;
+					}
+
+					for (int t = 1; t < linha_dados; t++)
+					{
+						vb[t] = vetorAUX[t];
+					}
+
+					for (auto& coluna : linha)
+					{
+						ps.estado_swt[coluna] = 1;
+
+						potencia_W = energia_nao_suprida(vb);
+
+						ps.estado_swt[coluna] = 0;
+
+						potencia_nao_suprida.push_back(potencia_W);
+					}
+
+					potencia_W = potencia_nao_suprida[0];
+
+					for (int y = 0; y < potencia_nao_suprida.size(); y++)
+					{
+						if (potencia_W > potencia_nao_suprida[y])
+						{
+							potencia_W = potencia_nao_suprida[y];
+						}
+					}
+
+					ENS.push_back(potencia_W);
+					potencia_nao_suprida.clear();
+					potencia_W = 0.0;
+					vetorAUX.clear();
+				}
+
+				while (!ENS.empty())
+				{
+					potencia_W += ENS.back();
+					ENS.pop_back();
+				}
+				
+
+				//
+			}
+
+			
+				
+			
+			
+
+
+
 			analise_remanejamento.clear();
+			remanej_cargas.clear();
+			cenario.clear();
 			posicao.clear();
 			secao.clear();
 			potencia_nao_suprida.clear(); //limpa os vetores
