@@ -915,20 +915,20 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 	float potencia_isolacao = 0.0;
 	float ENSotima = 0.0;
 
-	vector<int>::iterator it;
+	vector<int>::iterator itr;
 
 	bool condicaoFOR = true;
 	vector <int> posicao;
 	vector <float> potencia_nao_suprida;
 	vector <int> secao;
-	vector <int> analise_remanejamento;
+	vector <int> cenario;
+	vector <vector<int>> camada;
+	vector <vector<int>> analise_remanejamento;
 	
 	posicao.clear();
 	potencia_nao_suprida.clear();
 
-	fxp.conexao_alimentadores(); //define as conexoes pre-existentes
-
-	//deve-se analisar todas as secoes
+	//deve-se analisar todas as secoes para os valores da funcao obj
 
 	//alimentador i
 	for (int i = 1; i < num_AL; i++)
@@ -1000,7 +1000,102 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 				}
 			}
 
-			// 2b) ver quais chaves para remanejamento podem ser abertas
+			// 2b) cenario da falta
+
+			//aqui se exclui a secao da matriz camada
+			for (int y = 1; y < linha_dados; y++)
+			{
+				for (int t = 1; t < linha_dados; t++)
+				{
+					for (int o = 1; o < linha_dados; o++)
+					{
+						if (fxp.camadaAL[i][y][t] != 0 && ac.secoes_chaves[i][j][o] && ac.secoes_chaves[i][j][o] != 0)
+						{
+							fxp.camadaAL[i][y][y] = 0;
+						}
+					}
+				}
+			}
+
+			//copiando camada
+			for (int y = 1; y < linha_dados; y++)
+			{
+				for (int t = 1; t < linha_dados; t++)
+				{
+					secao.push_back(fxp.camadaAL[i][y][t]);
+				}
+
+				camada.push_back(secao);
+				secao.clear();
+			}
+
+			secao.clear();
+		
+			//separando as secoes
+			for (auto& linhacamada: camada)
+			{
+				itr = linhacamada.begin();
+
+				itr = unique(linhacamada.begin(), linhacamada.end());
+
+				linhacamada.resize(distance(linhacamada.begin(),itr));
+
+				if (linhacamada.size() != 1)
+				{
+					for (auto& colunacamada : linhacamada)
+					{
+						if (colunacamada != 0)
+						{
+							secao.push_back(colunacamada);
+						}
+					}
+				}
+				else
+				{
+					if (secao.size() != 0)
+					{
+						analise_remanejamento.push_back(secao);
+						secao.clear();
+					}
+				}
+				
+			}
+
+			int contador = 0;
+			analise_remanejamento.clear();
+
+			//depois de separadas as secoes, ver quais necessitam de remanejamento
+			for (auto& linha : analise_remanejamento)
+			{
+				contador = 0;
+
+				itr = find(linha.begin(), linha.end(), alimentadores[i]);
+
+				if (itr == linha.end())
+				{
+					for (auto& coluna : linha)
+					{
+						for (int y = 1; y < linha_dados; y++)
+						{
+							if (ac.chf[i][y] != 0 && ac.chi[i][y] != 0)
+							{
+								if (coluna == ac.chi[i][y] || coluna == ac.chf[i][y])
+								{
+									contador++;
+								}
+							}
+						}
+					}
+
+					if (contador <= 1)
+					{
+						analise_remanejamento.push_back(linha);
+					}
+				}
+			}
+
+
+			/*
 			for (int h = 1; h < linha_dados; h++) // secao h
 			{
 				if (h != j)
@@ -1028,9 +1123,9 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 				}
 			}
 
-			// 2c) analisando o remanejamento, como deverá ser feito
-
-
+			
+			*/
+			
 
 			// 3) agora se analisa a ENS
 			for (int y = 0; y < analise_remanejamento.size(); y++)
@@ -1205,6 +1300,9 @@ int main()
 	//somatorio da potencia total do sistema
 	ps.somatorio_potencia();
 
+	//conexoes para remanejamento de cargas
+	fxp.conexao_alimentadores();
+
 	//resolve o fluxo de potencia
 	fxp.fluxo_potencia();
 
@@ -1231,7 +1329,7 @@ int main()
 
 	ac.secoes_alimentador();
 
-	ac.calculo_funcao_objetivo(); //last edit
+	ac.calculo_funcao_objetivo(); 
 
 	
 	cout << "\n" << "Contador Fluxo de Potencia: " << fxp.contadorFXP << endl;
