@@ -11,6 +11,7 @@
 #include <string>
 #include <algorithm>
 #include <iterator>
+#include <tuple>
 
 using namespace std;
 
@@ -89,6 +90,8 @@ public:
 
 	float dist_no[linha_dados]; //distancia entre nós
 
+	float potencia_al[num_AL]; //potencia de cada alimentador
+
 	float total_ativa = 0;
 	complex <float> total_complexa = complex <float>(float (0.0), float (0.0));
 
@@ -153,10 +156,11 @@ public:
 
 private:
 
-	int contagem_criterio(int camada[linha_dados][linha_dados]); //criterio para a contagem de quantas chaves alocar em cada alimentador do sistema teste
+	tuple <int, float> contagem_criterio(int camada[linha_dados][linha_dados]); //criterio para a contagem de quantas chaves alocar em cada alimentador do sistema teste
 	void adjacentes(int posicao[linha_dados], int adj[linha_dados][linha_dados], int alimentador); //calcula os adjacentes das chaves e da secao do alimentador
 	float energia_nao_suprida(int bar_aliment[linha_dados]); //aqui se calcula a energia nao suprida para o calculo da funcao objetivo e tambem calcula a capacidade da subestacao e as condicoes de estado restaurativo
 	float FO(float potencia_secao, float comprimeto_secao, float ens_isolacao);
+	float energia_suprida(float potencia_al_original, int AL);
 
 }ac;
 
@@ -559,11 +563,11 @@ void FluxoPotencia::fluxo_potencia() //alterar conforme o numero de alimentadore
 
 } 
 
-int AlocacaoChaves::contagem_criterio(int camada[linha_dados][linha_dados])
+tuple <int, float> AlocacaoChaves::contagem_criterio(int camada[linha_dados][linha_dados])
 {
 	int num_crit = 0;
-	float num = 0;
-	float potencia = 0;
+	float num = 0.0;
+	float potencia = 0.0;
 
 	potencia = 0;
 
@@ -580,7 +584,6 @@ int AlocacaoChaves::contagem_criterio(int camada[linha_dados][linha_dados])
 					potencia += ps.s_nofr[k];
 				}
 			}
-
 		}
 	}
 
@@ -591,14 +594,14 @@ int AlocacaoChaves::contagem_criterio(int camada[linha_dados][linha_dados])
 	if (num_crit < 2) { num_crit = 2; }
 
 	//encontando o numero estipulado
-	return(num_crit);
+	return make_tuple(num_crit, potencia);
 }
 
 void AlocacaoChaves::criterio_numero_de_chaves() //alterar conforme o numero de alimentadores, modificando quantas vezes cada funcao eh chamada
 {
 	for (int i = 1; i < num_AL; i++)
 	{
-		ac.numch_AL[i] = contagem_criterio(fxp.camadaAL[i]);
+		tie(ac.numch_AL[i], ps.potencia_al[i]) = contagem_criterio(fxp.camadaAL[i]);
 	}
 }
 
@@ -806,10 +809,11 @@ void AlocacaoChaves::secoes_alimentador()
 	}
 }
 
+/*
 float AlocacaoChaves::energia_nao_suprida(int bar_aliment[linha_dados])
 {
 	//aqui se calcula a energia nao suprida para o calculo da funcao objetivo e tambem calcula a capacidade da subestacao e as condicoes de estado restaurativo
-	
+
 	float potencia = 0;
 	float potencia_nsup = 0;
 	complex <float> capacidadeSE = complex <float>(0, 0);
@@ -827,7 +831,7 @@ float AlocacaoChaves::energia_nao_suprida(int bar_aliment[linha_dados])
 	{
 		if (abs(fxp.tensao_pu[y]) < estado_restaurativo_pu)
 		{
-			analise = "fora do limite";	
+			analise = "fora do limite";
 		}
 	}
 
@@ -864,7 +868,7 @@ float AlocacaoChaves::energia_nao_suprida(int bar_aliment[linha_dados])
 	else
 	{
 		//somar toda a potencia do alimentador
-	
+
 		potencia_nsup = 0.0;
 
 		for (int i = 1; i < linha_dados; i++)
@@ -877,12 +881,78 @@ float AlocacaoChaves::energia_nao_suprida(int bar_aliment[linha_dados])
 				}
 			}
 		}
-		
+
 	}
 
 
 	return(potencia_nsup);
 
+}
+
+
+*/
+
+float AlocacaoChaves::energia_suprida(float potencia_al_original, int AL)
+{
+	bool analise;
+	float energia_sup = 0.0;
+	complex <float> capacidadeSE;
+	float energia_n_sup = 0.0;
+	float sum_pot = 0.0;
+	
+	fxp.fluxo_potencia();
+
+	// ANALISANDO FLUXO DE POTENCIA:
+
+	analise = true; //verdadeiro se atende as condiçoes, falso caso contrario
+
+	// 1. Níveis de tensao devem estar acima de 0.93pu
+	for (int y = 1; y < linha_dados; y++)
+	{
+		if (abs(fxp.tensao_pu[y]) < estado_restaurativo_pu)
+		{
+			analise = false;
+		}
+	}
+
+	// 2. A potencia alimentada por cada alimentador deve estar dentro da capacidade do alimentador
+	for (int i = 1; i < num_AL; i++)
+	{
+		capacidadeSE.real(0.0);
+		capacidadeSE.imag(0.0);
+
+		for (int j = 1; j < linha_dados; j++)
+		{
+			for (int k = 1; k < linha_dados; k++)
+			{
+				for (int t = 1; t < linha_dados; t++)
+				{
+					if (fxp.camadaAL[i][j][k] == ps.nof[t] && fxp.camadaAL[i][j][k] != 0 && ps.estado_swt[t] == 1)
+					{
+						sum_pot += ps.s_nofr[t]; //aqui é apenas um somador de potencias
+						capacidadeSE += ps.s_nof[t];
+					}
+				}
+			}
+		}
+
+		if (abs(capacidadeSE) > capSE[i])
+		{
+			analise = false;
+		}
+	}
+
+	if (analise == true)
+	{
+		energia_n_sup = ps.total_ativa - sum_pot;
+		energia_sup = potencia_al_original - energia_n_sup; //energia suprida pela chave de remanejamento
+		return(energia_sup);
+	}
+	else
+	{
+		energia_sup = 0.0;
+		return(energia_sup);
+	}
 }
 
 float AlocacaoChaves::FO(float potencia_secao, float comprimento, float ens_isolacao )
@@ -914,12 +984,12 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 	float chamadaFO = 0.0;
 	float potencia_isolacao = 0.0;
 	float ENSotima = 0.0;
+	float ens = 0.0;
 
 	vector<int>::iterator itr;
 
 	bool condicaoFOR = true;
 	vector <int> posicao;
-	vector <float> potencia_nao_suprida;
 	vector <int> secao;
 	vector <vector<int>> cenario;
 	vector <vector<int>> camada;
@@ -927,7 +997,6 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 	vector <vector<int>> remanej_cargas;
 	
 	posicao.clear();
-	potencia_nao_suprida.clear();
 	remanej_cargas.clear();
 
 	//deve-se analisar todas as secoes para os valores da funcao obj
@@ -935,6 +1004,8 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 	//alimentador i
 	for (int i = 1; i < num_AL; i++)
 	{
+		ps.leitura_parametros();
+
 		//secao j
 		for (int j = 1; j < linha_dados; j++)
 		{
@@ -1004,6 +1075,9 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 
 			// 2b) cenario da falta
 
+			/*
+			
+			
 			//aqui se exclui a secao da matriz camada
 			for (int y = 1; y < linha_dados; y++)
 			{
@@ -1143,6 +1217,9 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 
 			// 3) agora se analisa a ENS
 
+			/*
+			
+			
 			if (remanej_cargas.size() == 1)
 			{
 				//somente uma opcao para remanejamento de cada vez
@@ -1248,26 +1325,92 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 
 				//
 			}
-
-			
-				
 			
 			
+			*/
+			
+			//aqui se exclui a secao da matriz camada
+			for (int y = 1; y < linha_dados; y++)
+			{
+				for (int t = 1; t < linha_dados; t++)
+				{
+					for (int o = 1; o < linha_dados; o++)
+					{
+						if (fxp.camadaAL[i][y][t] != 0 && fxp.camadaAL[i][y][t] == ac.secoes_chaves[i][j][o] && ac.secoes_chaves[i][j][o] != 0)
+						{
+							secao.push_back(fxp.camadaAL[i][y][t]);
+						}
+					}
+				}
+
+				if(secao.size()!=0){ camada.push_back(secao); }
+				secao.clear();
+			}
+
+			secao.clear();
+			secao.push_back(camada.size());
+
+			desiste dessa ideia, usar oq ta no caderno
 
 
+			
+			
 
+			
+			if (remanej_cargas.size() != 0)
+			{
+				ens = ps.potencia_al[i];
+
+				//somente uma opcao para remanejamento de cada vez
+				for (auto& linha : remanej_cargas)
+				{
+					for (auto& coluna : linha)
+					{
+						ps.estado_swt[coluna] = 1;
+
+						potencia_W = ac.energia_suprida(ps.potencia_al[i],i);
+
+						ps.estado_swt[coluna] = 0;
+
+						if (potencia_W != 0)
+						{
+							break;
+						}
+					}
+
+					ens = ens - potencia_W;
+					potencia_W = 0.0;
+				}
+			}
+			else
+			{
+				//nao tem como fazer manobra, a ENS será os adjacentes da chave
+				ens = 0.0;
+
+				for (int y = 1; y < linha_dados; y++)
+				{
+					for (int h = 1; h < linha_dados; h++)
+					{
+						if (ps.nof[h] == ac.adjacente_chaves[i][j][y])
+						{
+							ens = ens + ps.s_nofr[h];
+						}
+					}
+				}
+			}
+			
 			analise_remanejamento.clear();
 			remanej_cargas.clear();
 			cenario.clear();
 			posicao.clear();
 			secao.clear();
-			potencia_nao_suprida.clear(); //limpa os vetores
+			camada.clear(); //limpa vetores e matrizes usadas
+			
 
-
-			// 5) chamando a funcao objetivo
+			// 4) chamando a funcao objetivo
 			chamadaFO = 0.0;
 
-			chamadaFO = FO(potencia_W, comprimento_secao, potencia_isolacao);
+			chamadaFO = FO(ens, comprimento_secao, potencia_isolacao);
 
 			valorFO += chamadaFO;
 	
