@@ -1329,31 +1329,41 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 			
 			*/
 			
-			//aqui se exclui a secao da matriz camada
-			for (int y = 1; y < linha_dados; y++)
+			//copiando as secoes das camadas para montar o cenario da falta
+
+			cenario.clear(); //copia do adjacentes falhas 
+			secao.clear();
+
+			for (int k = 1; k < linha_dados; k++)
 			{
-				for (int t = 1; t < linha_dados; t++)
+				for (int y = 1; y < linha_dados; y++)
 				{
-					for (int o = 1; o < linha_dados; o++)
+					if (k != j && ac.secoes_chaves[i][k][y] != 0)
 					{
-						if (fxp.camadaAL[i][y][t] != 0 && fxp.camadaAL[i][y][t] == ac.secoes_chaves[i][j][o] && ac.secoes_chaves[i][j][o] != 0)
+						//
+						for (int t = 1; t < linha_dados; t++)
 						{
-							secao.push_back(fxp.camadaAL[i][y][t]);
+							for (int c = 1; c < linha_dados; c++)
+							{
+								if (t != k && ac.secoes_chaves[i][t][c] != 0)
+								{
+									//
+									for (int r = 1; r < linha_dados; r++)
+									{
+										if() ///parar aqui
+
+									}
+								}
+							}
 						}
 					}
 				}
-
-				if(secao.size()!=0){ camada.push_back(secao); }
-				secao.clear();
 			}
 
-			secao.clear();
-			secao.push_back(camada.size());
-
-			desiste dessa ideia, usar oq ta no caderno
 
 
-			
+
+
 			
 
 			
