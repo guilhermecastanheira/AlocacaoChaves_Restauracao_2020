@@ -790,20 +790,30 @@ void AlocacaoChaves::secoes_alimentador()
 
 		//agora sim, zerar os repetidos da array ac.adjacente_chaves[][][]
 
-		for (int j = 2; j < linha_dados; j++)
+		for (int j = 1; j < linha_dados; j++)
 		{
-			//o j=2 porque a primeira vai ser a secao do alimentador
-
 			for (int k = 1; k < linha_dados; k++)
 			{
 				//
-				for (int p = 1; p < linha_dados; p++)
+				if (ac.secoes_chaves[i][j][k] == 0)
 				{
-					if (ac.secoes_chaves[i][j - 1][k] == ac.secoes_chaves[i][j][p])
-					{
-						ac.secoes_chaves[i][j - 1][k] = 0;
-					}
+					continue;
 				}
+
+				for (int y = 1; y < linha_dados; y++)
+				{
+					for (int p = 1; p < linha_dados; p++)
+					{
+						if (ac.secoes_chaves[i][y][p] == 0)
+						{
+							continue;
+						}
+						if (ac.secoes_chaves[i][j][k] == ac.secoes_chaves[i][y][p] && y != j)
+						{
+							ac.secoes_chaves[i][j][k] = 0;
+						}
+					}
+				}	
 			}
 		}
 	}
@@ -986,11 +996,14 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 	float ENSotima = 0.0;
 	float ens = 0.0;
 
-	vector<int>::iterator itr;
+	vector<int>::iterator itr_s1;
+	vector<int>::iterator itr_s2;
 
 	bool condicaoFOR = true;
 	vector <int> posicao;
+	vector <int> barras;
 	vector <int> secao;
+	vector <int> secao2;
 	vector <vector<int>> cenario;
 	vector <vector<int>> camada;
 	vector <vector<int>> analise_remanejamento;
@@ -1329,37 +1342,124 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 			
 			*/
 			
-			//copiando as secoes das camadas para montar o cenario da falta
-
-			cenario.clear(); //copia do adjacentes falhas 
-			secao.clear();
+			//copiando as secoes das camadas para montar o cenario da falta, excluindo a secao j
+			posicao.clear();
 
 			for (int k = 1; k < linha_dados; k++)
 			{
-				for (int y = 1; y < linha_dados; y++)
-				{
-					if (k != j && ac.secoes_chaves[i][k][y] != 0)
-					{
-						//
-						for (int t = 1; t < linha_dados; t++)
-						{
-							for (int c = 1; c < linha_dados; c++)
-							{
-								if (t != k && ac.secoes_chaves[i][t][c] != 0)
-								{
-									//
-									for (int r = 1; r < linha_dados; r++)
-									{
-										if() ///parar aqui
+				if (k == j) { continue; }
 
-									}
+				for (int t = 1; t < linha_dados; t++)
+				{
+					if (ac.secoes_chaves[i][k][t] != 0)
+					{
+						posicao.push_back(ac.secoes_chaves[i][k][t]);
+					}
+				}
+
+				if(!posicao.empty())
+				{ 
+					camada.push_back(posicao); 
+					posicao.clear();
+				}
+			}
+
+			posicao.clear();
+			cenario.clear(); //copia do adjacentes falhas 
+			secao.clear();
+			secao2.clear();
+			
+			/*
+			for (int k = 1; k < linha_dados; k++) //secao k
+			{
+				if (k != j)
+				{
+					secao.clear();
+					secao2.clear();
+
+					for (int y = 1; y < linha_dados; y++)
+					{
+						if (ac.secoes_chaves[i][k][y] != 0)
+						{
+							secao.push_back(ac.secoes_chaves[i][k][y]);
+						}
+						if (ac.secoes_chaves[i][k + 1][y] != 0)
+						{
+							secao2.push_back(ac.secoes_chaves[i][k + 1][y]);
+						}
+					}
+
+					if (!secao.empty() && !secao2.empty())
+					{
+						bool s1, s2;
+						s1 = false;
+						s2 = false;
+
+						for (int y = 1; y < linha_dados; y++)
+						{
+							itr_s1 = find(secao.begin(), secao.end(), ps.noi[y]);
+							itr_s2 = find(secao2.begin(), secao2.end(), ps.nof[y]);
+
+							if (itr_s1 != secao.end()) { s1 = true; }
+							if (itr_s2 != secao2.end()) { s2 = true; }
+						}
+
+						if (s1 == true && s2 == true)
+						{
+							posicao.push_back(k);
+							posicao.push_back(k + 1);
+							cenario.push_back(posicao);
+
+							posicao.clear();
+						}
+					}
+					else
+					{
+						break;
+					}
+				}
+			}
+			
+			
+			*/
+			
+			for (auto& secao : camada)
+			{
+				for (auto& secao2 : camada)
+				{
+					if (secao == secao2)
+					{
+						continue;
+					}
+					else
+					{
+						barras = secao;
+
+						bool s1, s2;
+						
+						for (int y = 1; y < linha_dados; y++)
+						{
+							if (ps.estado_swt[y] == 1)
+							{
+								s1 = false;
+								s2 = false;
+
+								itr_s1 = find(secao.begin(), secao.end(), ps.noi[y]);
+								itr_s2 = find(secao2.begin(), secao2.end(), ps.nof[y]);
+
+								if (itr_s1 != secao.end()) { s1 = true; }
+								if (itr_s2 != secao2.end()) { s2 = true; }
+
+								if (s1 == true && s2 == true)
+								{
+									barras.insert(barras.end(), secao2.begin(), secao2.end());
 								}
 							}
+							
 						}
 					}
 				}
 			}
-
 
 
 
@@ -1570,8 +1670,4 @@ int main()
 
 	
 	cout << "\n" << "Contador Fluxo de Potencia: " << fxp.contadorFXP << endl;
-
-	// last update: 01/03/2020 - começar a fazer as vizinhanças
-
-
 }
