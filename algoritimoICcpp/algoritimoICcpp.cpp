@@ -1088,260 +1088,6 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 
 			// 2b) cenario da falta
 
-			/*
-			
-			
-			//aqui se exclui a secao da matriz camada
-			for (int y = 1; y < linha_dados; y++)
-			{
-				for (int t = 1; t < linha_dados; t++)
-				{
-					for (int o = 1; o < linha_dados; o++)
-					{
-						if (fxp.camadaAL[i][y][t] != 0 && fxp.camadaAL[i][y][t] == ac.secoes_chaves[i][j][o] && ac.secoes_chaves[i][j][o] != 0)
-						{
-							fxp.camadaAL[i][y][t] = 0;
-						}
-					}
-				}
-			}
-
-			//copiando camada
-			for (int y = 1; y < linha_dados; y++)
-			{
-				for (int t = 1; t < linha_dados; t++)
-				{
-					secao.push_back(fxp.camadaAL[i][y][t]);
-				}
-
-				camada.push_back(secao);
-				secao.clear();
-			}
-
-		
-			secao.clear();
-
-			//separando as secoes
-			for (auto& linhacamada: camada)
-			{
-				itr = unique(linhacamada.begin(), linhacamada.end());
-
-				linhacamada.resize(distance(linhacamada.begin(),itr));
-
-				if (linhacamada.size() > 1)
-				{
-					for (auto& colunacamada : linhacamada)
-					{
-						if (colunacamada != 0)
-						{
-							secao.push_back(colunacamada);
-						}
-					}
-				}
-				else
-				{
-					if (secao.size() != 0)
-					{
-						analise_remanejamento.push_back(secao);
-						secao.clear();
-					}
-				}	
-			}
-
-			int contador = 0;
-			secao.clear();
-
-			//depois de separadas as secoes, ver quais necessitam de remanejamento
-			for (auto& linha : analise_remanejamento)
-			{
-				itr = find(linha.begin(), linha.end(), alimentadores[i]);
-
-				if (itr == linha.end())
-				{
-					contador = 0;
-
-					for (auto& coluna : linha)
-					{
-						for (int y = 1; y < linha_dados; y++)
-						{
-							if (ac.chf[i][y] != 0 && ac.chi[i][y] != 0)
-							{
-								if (coluna == ac.chi[i][y] || coluna == ac.chf[i][y])
-								{
-									contador++;
-								}
-							}
-						}
-					}
-
-					if (contador <= 1)
-					{
-						cenario.push_back(secao);
-						secao.clear();
-					}
-					else
-					{
-						secao.insert(secao.end(), linha.begin(), linha.end());
-					}
-				}
-			}
-
-			if (secao.size() != 0)
-			{
-				cenario.push_back(secao);
-			}
-
-
-			//encontrando remanejamento
-			analise_remanejamento.clear();
-			int r1 = 0;
-			int r2 = 0;
-
-			for (auto& line : cenario)
-			{
-				for (auto& col : line)
-				{
-					for (int y = 1; y < linha_dados; y++)
-					{
-						if (fxp.conexao_predef[y][1] != 0 && fxp.conexao_predef[y][2] != 0)
-						{
-							if (col == fxp.conexao_predef[y][1] || col == fxp.conexao_predef[y][2])
-							{
-								r1 = fxp.conexao_predef[y][1];
-								r2 = fxp.conexao_predef[y][2];
-
-								for (int t = 1; t < linha_dados; t++)
-								{
-									if (r1 == ps.noi[t] && r2 == ps.nof[t])
-									{
-										posicao.push_back(t);
-									}
-								}
-							}
-						}
-					
-					}
-				}
-
-				remanej_cargas.push_back(posicao);
-				posicao.clear();
-			}
-
-
-			// 3) agora se analisa a ENS
-
-			/*
-			
-			
-			if (remanej_cargas.size() == 1)
-			{
-				//somente uma opcao para remanejamento de cada vez
-				for (auto& linha : remanej_cargas)
-				{
-					for (auto& coluna : linha)
-					{
-						ps.estado_swt[coluna] = 1;
-
-						potencia_W = energia_nao_suprida(ac.adjacente_chaves[i][j]);
-
-						ps.estado_swt[coluna] = 0;
-
-						potencia_nao_suprida.push_back(potencia_W);
-
-						if (abs(potencia_W - ENSotima) < 0.01)
-						{
-							break;
-						}
-					}
-				}
-
-				//selecionando menor ENS encontrada
-				potencia_W = potencia_nao_suprida[0];
-
-				for (int y = 0; y < potencia_nao_suprida.size(); y++)
-				{
-					if (potencia_W > potencia_nao_suprida[y])
-					{
-						potencia_W = potencia_nao_suprida[y];
-					}
-				}
-			}
-			else if(remanej_cargas.size() == 0)
-			{
-				//sem opcoes de remanejamento, a potencia é a potencia do adjacentes a chave
-
-				for (int y = 1; y < linha_dados; y++)
-				{
-					for (int h = 1; h < linha_dados; h++)
-					{
-						if (ps.nof[h] == ac.adjacente_chaves[i][j][y])
-						{
-							potencia_W = potencia_W + ps.s_nofr[h];
-						}
-					}
-				}
-			}
-			else
-			{
-				//mais de um chaveamento
-				int vb[linha_dados];
-				vector <int> vetorAUX;
-				vector <float> ENS;
-				
-				for (auto& linha : remanej_cargas)
-				{
-					vetorAUX = linha;
-
-					for (int t = linha.size(); t < linha_dados; t++)
-					{
-						vetorAUX[t] = 0;
-					}
-
-					for (int t = 1; t < linha_dados; t++)
-					{
-						vb[t] = vetorAUX[t];
-					}
-
-					for (auto& coluna : linha)
-					{
-						ps.estado_swt[coluna] = 1;
-
-						potencia_W = energia_nao_suprida(vb);
-
-						ps.estado_swt[coluna] = 0;
-
-						potencia_nao_suprida.push_back(potencia_W);
-					}
-
-					potencia_W = potencia_nao_suprida[0];
-
-					for (int y = 0; y < potencia_nao_suprida.size(); y++)
-					{
-						if (potencia_W > potencia_nao_suprida[y])
-						{
-							potencia_W = potencia_nao_suprida[y];
-						}
-					}
-
-					ENS.push_back(potencia_W);
-					potencia_nao_suprida.clear();
-					potencia_W = 0.0;
-					vetorAUX.clear();
-				}
-
-				while (!ENS.empty())
-				{
-					potencia_W += ENS.back();
-					ENS.pop_back();
-				}
-				
-
-				//
-			}
-			
-			
-			*/
-			
 			//copiando as secoes das camadas para montar o cenario da falta, excluindo a secao j
 			posicao.clear();
 
@@ -1365,78 +1111,18 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 			}
 
 			posicao.clear();
-			cenario.clear(); //copia do adjacentes falhas 
+			cenario.clear(); //qual secao liga em qual?
 			secao.clear();
 			secao2.clear();
-			
-			/*
-			for (int k = 1; k < linha_dados; k++) //secao k
+
+			for (auto& vetor : camada)
 			{
-				if (k != j)
+				for (auto& vetor2 : camada)
 				{
-					secao.clear();
-					secao2.clear();
-
-					for (int y = 1; y < linha_dados; y++)
-					{
-						if (ac.secoes_chaves[i][k][y] != 0)
-						{
-							secao.push_back(ac.secoes_chaves[i][k][y]);
-						}
-						if (ac.secoes_chaves[i][k + 1][y] != 0)
-						{
-							secao2.push_back(ac.secoes_chaves[i][k + 1][y]);
-						}
-					}
-
-					if (!secao.empty() && !secao2.empty())
+					if (vetor != vetor2)
 					{
 						bool s1, s2;
-						s1 = false;
-						s2 = false;
 
-						for (int y = 1; y < linha_dados; y++)
-						{
-							itr_s1 = find(secao.begin(), secao.end(), ps.noi[y]);
-							itr_s2 = find(secao2.begin(), secao2.end(), ps.nof[y]);
-
-							if (itr_s1 != secao.end()) { s1 = true; }
-							if (itr_s2 != secao2.end()) { s2 = true; }
-						}
-
-						if (s1 == true && s2 == true)
-						{
-							posicao.push_back(k);
-							posicao.push_back(k + 1);
-							cenario.push_back(posicao);
-
-							posicao.clear();
-						}
-					}
-					else
-					{
-						break;
-					}
-				}
-			}
-			
-			
-			*/
-			
-			for (auto& secao : camada)
-			{
-				for (auto& secao2 : camada)
-				{
-					if (secao == secao2)
-					{
-						continue;
-					}
-					else
-					{
-						barras = secao;
-
-						bool s1, s2;
-						
 						for (int y = 1; y < linha_dados; y++)
 						{
 							if (ps.estado_swt[y] == 1)
@@ -1444,22 +1130,60 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 								s1 = false;
 								s2 = false;
 
-								itr_s1 = find(secao.begin(), secao.end(), ps.noi[y]);
-								itr_s2 = find(secao2.begin(), secao2.end(), ps.nof[y]);
+								itr_s1 = find(vetor.begin(), vetor.end(), ps.noi[y]);
+								itr_s2 = find(vetor2.begin(), vetor2.end(), ps.nof[y]);
 
-								if (itr_s1 != secao.end()) { s1 = true; }
-								if (itr_s2 != secao2.end()) { s2 = true; }
+								if (itr_s1 != vetor.end()) { s1 = true; }
+								if (itr_s2 != vetor2.end()) { s2 = true; }
 
 								if (s1 == true && s2 == true)
 								{
-									barras.insert(barras.end(), secao2.begin(), secao2.end());
+									for (unsigned k = 0; k < camada.size(); k++)
+									{
+										if (vetor == camada[k] || vetor2==camada[k])
+										{
+											posicao.push_back(k);
+										}
+									}
+									
 								}
+
 							}
-							
+						}
+					}
+
+					if (!posicao.empty())
+					{
+						cenario.push_back(posicao);
+						posicao.clear();
+					}
+				
+				}
+			}
+
+			//unido repetidos na matriz cenario
+			for (auto& linha1 : cenario)
+			{
+				for (auto& coluna1 : linha1)
+				{
+					for (auto& linha2 : cenario)
+					{
+						for (auto& coluna2 : linha2)
+						{
+							if (linha1 == linha2) { continue; }
+							else if (coluna1 == coluna2)
+							{
+								linha1.insert(linha1.end(), linha2.begin(), linha2.end());
+								//PAREI LINHA 1177
+							}
 						}
 					}
 				}
 			}
+				
+
+			
+			
 
 
 
