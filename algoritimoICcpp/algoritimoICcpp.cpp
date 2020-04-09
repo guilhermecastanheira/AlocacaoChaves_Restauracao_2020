@@ -1115,6 +1115,8 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 			secao.clear();
 			secao2.clear();
 
+			/*
+			
 			for (auto& vetor : camada)
 			{
 				for (auto& vetor2 : camada)
@@ -1173,8 +1175,15 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 							if (linha1 == linha2) { continue; }
 							else if (coluna1 == coluna2)
 							{
+								vector<int>::iterator it;
+								vector<int>::iterator rem;
+
+								//it = find(linha2.begin(), linha2.end(), coluna2);
+
 								linha1.insert(linha1.end(), linha2.begin(), linha2.end());
-								//PAREI LINHA 1177
+
+								//rem = remove(linha2.begin(), linha2.end(), coluna2);
+								
 							}
 						}
 					}
@@ -1184,9 +1193,90 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 
 			
 			
+			
+			*/
+			
+			//separando as seções para remanejamento parte 1: definindo
+			for (int k = 1; k < linha_dados; k++)
+			{
+				
+				if (ac.chi[i][k] == 0 || ac.chf[i][k] == 0) { continue; }
+				
+				for (auto& lin : camada)
+				{
+					for (auto& col : lin)
+					{
+						if (ac.chi[i][k] == col || ac.chf[i][k] == col)
+						{
+							posicao.push_back(col);
+						}
+					}
+				}
 
+				if (posicao.size() == 1)
+				{
+					vector<int>::iterator sch;
 
+					for (auto& l : camada)
+					{
+						for (auto& x : posicao)
+						{
+							sch = find(l.begin(), l.end(), x);
 
+							if (sch != l.end())
+							{
+								secao.insert(secao.end(), l.begin(), l.end());
+							}
+						}
+					}
+
+					analise_remanejamento.push_back(secao);
+					secao.clear();
+					posicao.clear();
+				}
+			}
+			
+			//separando secoes para remanejamento parte 2: completando
+		completa:
+			for (auto& lin : analise_remanejamento)
+			{
+				for (auto& colun : lin)
+				{
+					for (int k = 1; k < linha_dados; k++)
+					{
+						if (colun == ac.chi[i][k])
+						{
+							for (auto& lc : camada)
+							{
+								for (auto& cc : lc)
+								{
+									if (cc == ac.chf[i][k])
+									{
+										bool add;
+										add = false;
+
+										for (auto& lin2 : analise_remanejamento)
+										{
+											vector<int>::iterator itb;
+											itb = find(lin2.begin(), lin2.end(), cc);
+
+											if (itb != lin2.end()) { add = true; }
+										}
+
+										if (add == false)
+										{
+											//quer dizer que esta camada ainda nao tem na analise 
+											lin.insert(lin.end(), lc.begin(), lc.end());
+											goto completa;
+										}
+									}
+								}
+							}
+						}
+					}
+					
+				}
+			}
 
 			
 
