@@ -819,89 +819,6 @@ void AlocacaoChaves::secoes_alimentador()
 	}
 }
 
-/*
-float AlocacaoChaves::energia_nao_suprida(int bar_aliment[linha_dados])
-{
-	//aqui se calcula a energia nao suprida para o calculo da funcao objetivo e tambem calcula a capacidade da subestacao e as condicoes de estado restaurativo
-
-	float potencia = 0;
-	float potencia_nsup = 0;
-	complex <float> capacidadeSE = complex <float>(0, 0);
-	string analise = "dentro do limite";
-
-	potencia = 0.0;
-	potencia_nsup = 0.0;
-	analise = "dentro do limite";
-
-
-	fxp.fluxo_potencia(); //separa as camadas e faz o fluxo novamente
-
-	//analisa se existe algo fora
-	for (int y = 1; y < linha_dados; y++)
-	{
-		if (abs(fxp.tensao_pu[y]) < estado_restaurativo_pu)
-		{
-			analise = "fora do limite";
-		}
-	}
-
-	for (int i = 1; i < num_AL; i++)
-	{
-		capacidadeSE.real(0.0);
-		capacidadeSE.imag(0.0);
-
-		for (int j = 1; j < linha_dados; j++)
-		{
-			for (int k = 1; k < linha_dados; k++)
-			{
-				for (int t = 1; t < linha_dados; t++)
-				{
-					if (fxp.camadaAL[i][j][k] == ps.nof[t] && fxp.camadaAL[i][j][k] != 0 && ps.estado_swt[t] == 1)
-					{
-						potencia += ps.s_nofr[t];
-						capacidadeSE += ps.s_nof[t];
-					}
-				}
-			}
-		}
-
-		if (abs(capacidadeSE) > capSE[i])
-		{
-			analise = "fora do limite";
-		}
-	}
-
-	if (analise == "dentro do limite")
-	{
-		potencia_nsup = ps.total_ativa - potencia;
-	}
-	else
-	{
-		//somar toda a potencia do alimentador
-
-		potencia_nsup = 0.0;
-
-		for (int i = 1; i < linha_dados; i++)
-		{
-			for (int j = 1; j < linha_dados; j++)
-			{
-				if (bar_aliment[i] == ps.nof[j])
-				{
-					potencia_nsup += ps.nof[j];
-				}
-			}
-		}
-
-	}
-
-
-	return(potencia_nsup);
-
-}
-
-
-*/
-
 float AlocacaoChaves::energia_suprida(float potencia_al_original, int AL)
 {
 	bool analise;
@@ -1142,11 +1059,22 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 					}
 
 					secao.clear();
-					break;
 				}
 				else
 				{
 					secao.clear();
+				}
+			}
+
+			//eliminar elementos iguais no vetor
+			for (int k = 0; k < posicao.size(); k++)
+			{
+				for (int t = 0; t < posicao.size(); t++)
+				{
+					if (t != k && posicao[k] == posicao[t])
+					{
+						posicao[t] = 0;
+					}
 				}
 			}
 
@@ -1155,6 +1083,8 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 
 			for (int k = 0; k < posicao.size(); k++)
 			{
+				if (posicao[k] == 0) { continue; }
+
 				for (int t = 1; t < linha_dados; t++)
 				{
 					if (ac.adjacente_chaves[i][posicao[k]][t] != 0)
@@ -1163,8 +1093,33 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 					}
 				}
 
-				analise_remanejamento.push_back(secao);
-				secao.clear();
+				//verificar se esta contido na camada
+				bool contbar;
+
+				contbar = false;
+
+				for (int g = 0; g < analise_remanejamento.size(); g++)
+				{
+					for (int h = 0; h < analise_remanejamento[g].size(); h++)
+					{
+						for (int t = 0; t < secao.size(); t++)
+						{
+							if (analise_remanejamento[g][h] == secao[t]) { contbar = true; }
+						}
+					}
+				}
+
+				if (contbar == false)
+				{
+					analise_remanejamento.push_back(secao);
+					secao.clear();
+				}
+				else
+				{
+					secao.clear();
+				}
+
+				
 			}
 
 			//pegando posições
@@ -1392,7 +1347,7 @@ int main()
 		}
 	}
 
-	ac.secoes_alimentador();
+	ac.secoes_alimentador(); //deve-se ler dados antes e fazer um fluxo de potencia depois
 
 	ac.calculo_funcao_objetivo(); 
 
