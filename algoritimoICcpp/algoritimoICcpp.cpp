@@ -27,8 +27,8 @@ using namespace std;
 #define num_AL 9 //numero de alimentadores +1 por conta do cpp
 #define estado_restaurativo_pu 0.93 //tensao minima no estado restaurativo
 
-//Chave a cada quantos kW?
-#define parametroCH_kW 1000;
+//Chave a cada quantos kVA?
+#define parametroCH_kVA 800;
 
 //Parametros Funcao objetivo
 #define tempo_falha 4 //numero de horas que o sistema fica em estado restaurativo
@@ -568,8 +568,8 @@ tuple <int, float> AlocacaoChaves::contagem_criterio(int camada[linha_dados][lin
 	int num_crit = 0;
 	float num = 0.0;
 	float potencia = 0.0;
-
-	potencia = 0;
+	complex <float> potencia_S = 0.0;
+	float modS = 0.0;
 
 	//somando potencia
 	for (int i = 1; i < linha_dados; i++)
@@ -581,13 +581,17 @@ tuple <int, float> AlocacaoChaves::contagem_criterio(int camada[linha_dados][lin
 			{
 				if (camada[i][j] == ps.nof[k])
 				{
+					potencia_S += ps.s_nof[k];
 					potencia += ps.s_nofr[k];
 				}
 			}
 		}
 	}
 
-	num = potencia / parametroCH_kW;
+	modS = abs(potencia_S);
+	modS = modS / 1000;
+
+	num = modS / parametroCH_kVA;
 
 	num_crit = round(num);
 
@@ -1347,7 +1351,9 @@ int main()
 		}
 	}
 
-	ac.secoes_alimentador(); //deve-se ler dados antes e fazer um fluxo de potencia depois
+	ps.leitura_parametros();
+	fxp.fluxo_potencia();
+	ac.secoes_alimentador(); 
 
 	ac.calculo_funcao_objetivo(); 
 
