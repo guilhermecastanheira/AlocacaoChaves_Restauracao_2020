@@ -60,13 +60,13 @@ float capSE[num_AL] = { 0, sref, sref, sref, sref, sref, sref, sref, sref };
 
 //NOTAS:
 /*
-- chaves no estado aberto eh considerado 0
-- chaves fechadas é considerado 1
+- chaves no estado aberto eh considerado 0;
+- chaves fechadas é considerado 1;
+- VND com duas vizinhanças de intensificação;
+- RVNS com quatro vizinhanças para diversificação;
 
 
 */
-
-
 
 //#######################################################################################
 
@@ -170,26 +170,20 @@ class GVNS
 public:
 	
 	void primeiraaloc();
+	void RVNS();
+	void VND();
 
 private:
 
-	void sorteiochaves(int numch, int camada[linha_dados][linha_dados], int posicao_camada[linha_dados], int alimentador);
+	void sorteiochaves(int numch, int camada[linha_dados][linha_dados], int posicao_camada[linha_dados], int alimentador); //sorteio inicial das chaves
+	void v1_VND(); //mover para adjacente
+	void v2_VND(); //mover para adjacente do adjacente
+	void v1_RVNS(); //sortear duas chaves e aplicar VND
+	void v2_RVNS(); //escolher todas as chaves de um alimentador sorteado e aplicar VND
+	void v3_RVNS(); //sortear duas chaves quaisquer para outra posição e aplicar VND
+	void v4_RVNS(); //sortear 2 < n < numero_max_chaves_sistema e reposiciona-las para outra posição, e aplicar VND nas n chaves 
+	
 }gvns;
-
-class RVNS:public GVNS
-{
-public:
-	int k = 2; //numero de vizinhança do RVNS
-
-}rvns;
-
-class VND:public GVNS
-{
-public:
-	int l = 2; //numero de vizinhança do VND
-
-
-}vnd;
 
 
 //------------------------------------------------------------
@@ -1310,6 +1304,7 @@ void GVNS::primeiraaloc() //alterar conforme o numero de alimentadores, modifica
 	}
 
 }
+
 
 //############################################################################################
 
