@@ -15,6 +15,7 @@
 
 using namespace std;
 
+#define num_run_alg 30 //numero em que o algoritimo deve ser compilado
 
 // DADOS DO SISTEMA DE 136 BARRAS ---------------------------------------
 
@@ -138,19 +139,18 @@ class AlocacaoChaves
 {
 public:
 
-	bool pula_etapa = false;
-
 	int numch_AL[num_AL]; //numero de chaves por alimentador seguindo o criterio estipulado
+	int numch_SIS = 0;
 	int posicaochaves[num_AL][linha_dados]; //vetor com as posicoes das chaves
 	int adjacente_chaves[num_AL][linha_dados][linha_dados];
 	int secoes_chaves[num_AL][linha_dados][linha_dados];
-	int chi[num_AL][linha_dados];
-	int chf[num_AL][linha_dados];
+	int chi[num_AL][linha_dados]; //barra inicial da chave
+	int chf[num_AL][linha_dados]; //barra final da chave
 
 
 	void criterio_numero_de_chaves();
 	void secoes_alimentador();
-	void calculo_funcao_objetivo();
+	float calculo_funcao_objetivo();
 	
 	
 
@@ -170,19 +170,18 @@ class GVNS
 public:
 	
 	void primeiraaloc();
-	void RVNS();
-	void VND();
+	float v1_RVNS(); //sortear duas chaves e aplicar VND
+	float v2_RVNS(); //escolher todas as chaves de um alimentador sorteado e aplicar VND
+	float v3_RVNS(); //sortear duas chaves quaisquer para outra posição e aplicar VND
+	float v4_RVNS(); //sortear 2 < n < numero_max_chaves_sistema e reposiciona-las para outra posição, e aplicar VND nas n chaves 
+	float VND(vector<int>chaves);
 
 private:
 
 	void sorteiochaves(int numch, int camada[linha_dados][linha_dados], int posicao_camada[linha_dados], int alimentador); //sorteio inicial das chaves
 	void v1_VND(); //mover para adjacente
 	void v2_VND(); //mover para adjacente do adjacente
-	void v1_RVNS(); //sortear duas chaves e aplicar VND
-	void v2_RVNS(); //escolher todas as chaves de um alimentador sorteado e aplicar VND
-	void v3_RVNS(); //sortear duas chaves quaisquer para outra posição e aplicar VND
-	void v4_RVNS(); //sortear 2 < n < numero_max_chaves_sistema e reposiciona-las para outra posição, e aplicar VND nas n chaves 
-	
+
 }gvns;
 
 
@@ -901,7 +900,7 @@ float AlocacaoChaves::FO(float potencia_secao, float comprimento, float ens_isol
 	return(resultado);
 }
 
-void AlocacaoChaves::calculo_funcao_objetivo()
+float AlocacaoChaves::calculo_funcao_objetivo()
 {
 	float comprimento_secao = 0.0;
 	float potencia_W = 0.0;
@@ -1210,6 +1209,8 @@ void AlocacaoChaves::calculo_funcao_objetivo()
 	}
 
 	cout <<"FO: " << valorFO << endl;
+
+	return(valorFO);
 }
 
 void GVNS::sorteiochaves(int numch, int camada[linha_dados][linha_dados], int posicao_camada[linha_dados], int alimentador)
@@ -1305,13 +1306,91 @@ void GVNS::primeiraaloc() //alterar conforme o numero de alimentadores, modifica
 
 }
 
+void GVNS::v1_VND()
+{
+
+}
+
+void GVNS::v2_VND()
+{
+
+}
+
+float GVNS::VND(vector <int> chaves)
+{
+	//O VND tem o objetivo de intensificar a busca do algoritmo
+
+	float vnd_current = 0.0;
+	float vnd_incumbent = 0.0;
+
+
+
+}
+
+float GVNS::v1_RVNS()
+{
+	//Descrição: sortear duas chaves quaisquer alocadas no sistema e aplicar o VND
+	//a principio, esta deve ser a estrutura de vizinhança mais simples dentro das estruturas de diversificação
+
+	float solution = 0.0;
+	int sort1 = 0;
+	int sort2 = 0;
+	int aleatorio = 0;
+
+	//sortear chaves para o VND
+	while (sort1==sort2)
+	{
+		aleatorio = rand() % ac.numch_SIS + 1;
+		sort1 = aleatorio; //primeiro sorteio
+
+		aleatorio = rand() % ac.numch_SIS + 1;
+		sort2 = aleatorio; //segundo sorteio
+	}
+
+
+	
+	solution = gvns.VND();
+
+	return(solution);
+	
+}
+
 
 //############################################################################################
 
 int main()
 {
+	int run_alg = 0;
+	float current_solution = 0.0;
+	float incumbent_solution = 0.0;
+	int itGVNS = 0;
+	vector <float> atualizãcaoFO;
+	vector <vector<float>> matriz_atualizacaoFO;
+	vector <int> iteracoesGVNS;
+
+rodar_dnv:
 
 	srand(static_cast <unsigned int> (time(NULL)));	//faz a aleatoriedade com base no relogio
+
+	//--------------------------------------------------------------------------
+
+	//variaveis a serem analisadas
+	current_solution = 0.0;
+	incumbent_solution = 0.0;
+
+	run_alg++;
+
+	//inicializações
+	ac.numch_SIS = 0;
+
+	for (int i = 1; i < num_AL; i++)
+	{
+		for (int j = 1; j < linha_dados; j++)
+		{
+			ac.chi[i][j] = 0;
+			ac.chf[i][j] = 0;
+		}
+	}
 
 	//faz a leitura dos parametros do circuito
 	ps.leitura_parametros();
@@ -1334,7 +1413,7 @@ int main()
 	//primeira alocacao: esta eh feita de forma aleatoria
 	gvns.primeiraaloc();
 
-	//inicio do GVNS
+	//iniciando do GVNS
 
 	//primeiras chaves
 	for (int i = 1; i < num_AL; i++)
@@ -1346,12 +1425,59 @@ int main()
 		}
 	}
 
+	//contado total de chaves
+	for (int i = 1; i < num_AL; i++)
+	{
+		for (int j = 1; j < linha_dados; j++)
+		{
+			if (ac.chi[i][j] != 0 && ac.chf[i][j] != 0)
+			{
+				ac.numch_SIS++;
+			}
+		}
+	}
+
 	ps.leitura_parametros();
 	fxp.fluxo_potencia();
 	ac.secoes_alimentador(); 
 
 	ac.calculo_funcao_objetivo(); 
 
+	incumbent_solution = ac.calculo_funcao_objetivo();
+
+metaheuristicGVNS:
+
+	itGVNS++;
+
+	current_solution = gvns.v1_RVNS();
+
+	if (current_solution < incumbent_solution)
+	{
+		incumbent_solution = current_solution;
+		atualizãcaoFO.push_back(incumbent_solution);
+		goto metaheuristicGVNS;
+	}
+
 	
-	cout << "\n" << "Contador Fluxo de Potencia: " << fxp.contadorFXP << endl;
+
+	//end metaheuristicGVNS
+	matriz_atualizacaoFO.push_back(atualizãcaoFO);
+	atualizãcaoFO.clear();
+
+	iteracoesGVNS.push_back(itGVNS);
+	itGVNS = 0;
+
+	if (run_alg < num_run_alg) { goto rodar_dnv; }
+
+	//getting values
+
+
+	//AQUI FAZER A ESTATISTICA DOS DADOS --- fazer depois de acabar de programar a metaheuristica
+
+
+
+
+
+	
+	cout << "\n" << "Contador Total Fluxo de Potencia: " << fxp.contadorFXP << endl;
 }
