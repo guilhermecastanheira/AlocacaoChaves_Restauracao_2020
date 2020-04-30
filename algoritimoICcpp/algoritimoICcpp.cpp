@@ -179,8 +179,8 @@ public:
 private:
 
 	void sorteiochaves(int numch, int camada[linha_dados][linha_dados], int posicao_camada[linha_dados], int alimentador); //sorteio inicial das chaves
-	void v1_VND(); //mover para adjacente
-	void v2_VND(); //mover para adjacente do adjacente
+	float v1_VND(vector<int>chavesv1); //mover para adjacente
+	float v2_VND(vector<int>chavesv2); //mover para adjacente do adjacente
 
 }gvns;
 
@@ -1306,12 +1306,15 @@ void GVNS::primeiraaloc() //alterar conforme o numero de alimentadores, modifica
 
 }
 
-void GVNS::v1_VND()
+float GVNS::v1_VND(vector <int> chavesv1)
 {
+	//troca as chaves para o vizinho
+
+
 
 }
 
-void GVNS::v2_VND()
+float GVNS::v2_VND(vector <int> chavesv2)
 {
 
 }
@@ -1323,6 +1326,13 @@ float GVNS::VND(vector <int> chaves)
 	float vnd_current = 0.0;
 	float vnd_incumbent = 0.0;
 
+	vnd_incumbent = ac.calculo_funcao_objetivo();
+
+inicioVND:
+
+	gvns.v1_VND(chaves);
+
+	
 
 
 }
@@ -1336,6 +1346,7 @@ float GVNS::v1_RVNS()
 	int sort1 = 0;
 	int sort2 = 0;
 	int aleatorio = 0;
+	vector <int> mudarch;
 
 	//sortear chaves para o VND
 	while (sort1==sort2)
@@ -1347,9 +1358,12 @@ float GVNS::v1_RVNS()
 		sort2 = aleatorio; //segundo sorteio
 	}
 
+	mudarch.push_back(sort1);
+	mudarch.push_back(sort2);
 
-	
-	solution = gvns.VND();
+	solution = gvns.VND(mudarch);
+
+	mudarch.clear();
 
 	return(solution);
 	
@@ -1441,9 +1455,7 @@ rodar_dnv:
 	fxp.fluxo_potencia();
 	ac.secoes_alimentador(); 
 
-	ac.calculo_funcao_objetivo(); 
-
-	incumbent_solution = ac.calculo_funcao_objetivo();
+	//ac.calculo_funcao_objetivo(); 
 
 metaheuristicGVNS:
 
