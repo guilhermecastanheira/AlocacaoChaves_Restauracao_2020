@@ -1309,6 +1309,64 @@ void GVNS::primeiraaloc() //alterar conforme o numero de alimentadores, modifica
 float GVNS::v1_VND(vector <int> chavesv1)
 {
 	//troca as chaves para o vizinho
+	//chavesv1 é a posicao das chaves
+
+	vector <int> chvizinhas;
+	bool repetepos = false;
+
+	vector <int> result_parcial;
+
+	//identificar chaves e muda-las para a melhor configuração
+
+	for (int i = 0; i < chavesv1.size(); i++)
+	{
+		//i: posicao das chaves
+		
+
+		//1) identificar chaves vizinhas
+		for (int k = 1; k < linha_dados; k++)
+		{
+			if (ac.chi[chavesv1[i]] == ac.chi[k] && ac.chf[chavesv1[i]] == ac.chf[k]) { continue; }
+
+			else if (ac.chi[k] == ac.chi[chavesv1[i]] || ac.chf[k] == ac.chi[chavesv1[i]]) 
+			{
+				repetepos = false;
+
+				for (int j = 0; j < chvizinhas.size(); j++)
+				{
+					if (chvizinhas[j] == k) { repetepos = true; }
+				}
+
+				if (repetepos == false)
+				{
+					chvizinhas.push_back(k);
+				}
+			}
+
+			else if (ac.chi[k] == ac.chf[chavesv1[i]] || ac.chf[k] == ac.chf[chavesv1[i]])
+			{
+				repetepos = false;
+
+				for (int j = 0; j < chvizinhas.size(); j++)
+				{
+					if (chvizinhas[j] == k) { repetepos = true; }
+				}
+
+				if (repetepos == false)
+				{
+					chvizinhas.push_back(k);
+				}
+			}
+		}
+
+		//2) mover a chave e encontrar o melhor valor de função objetivo
+
+		//fazer for com o vetor de chvizinhas para esta analise
+
+
+
+		//
+	}
 
 
 
@@ -1330,11 +1388,25 @@ float GVNS::VND(vector <int> chaves)
 
 inicioVND:
 
-	gvns.v1_VND(chaves);
+	vnd_current = gvns.v1_VND(chaves);
 
-	
+	if (vnd_current < vnd_incumbent)
+	{
+		vnd_incumbent = vnd_current;
+		goto inicioVND;
+	}
 
+	vnd_current = gvns.v2_VND(chaves);
 
+	if (vnd_current < vnd_incumbent)
+	{
+		vnd_incumbent = vnd_current;
+		goto inicioVND;
+	}
+
+	//acaba o vnd
+
+	return(vnd_incumbent);
 }
 
 float GVNS::v1_RVNS()
