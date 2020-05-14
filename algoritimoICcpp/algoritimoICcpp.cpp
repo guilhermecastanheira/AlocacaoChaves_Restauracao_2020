@@ -146,11 +146,15 @@ public:
 	int secoes_chaves[num_AL][linha_dados][linha_dados];
 	int chi[num_AL][linha_dados]; //barra inicial da chave
 	int chf[num_AL][linha_dados]; //barra final da chave
+	int antchi[num_AL][linha_dados]; //barra inicial da chave
+	int antchf[num_AL][linha_dados]; //barra final da chave
 
-
+	void chaves_anteriores();
+	void volta_chaves_anteriores();
 	void criterio_numero_de_chaves();
 	void secoes_alimentador();
 	float calculo_funcao_objetivo();
+
 	
 	
 
@@ -164,10 +168,15 @@ private:
 
 }ac;
 
-
 class GVNS
 {
 public:
+
+	float current_solution = 0.0;
+	float incumbent_solution = 0.0;
+
+	float vnd_current = 0.0;
+	float vnd_incumbent = 0.0;
 	
 	void primeiraaloc();
 	float v1_RVNS(); //sortear duas chaves e aplicar VND
@@ -1213,6 +1222,30 @@ float AlocacaoChaves::calculo_funcao_objetivo()
 	return(valorFO);
 }
 
+void AlocacaoChaves::chaves_anteriores()
+{
+	for (int i = 1; i < num_AL; i++)
+	{
+		for (int j = 1; j < linha_dados; j++)
+		{
+			antchi[i][j] = chi[i][j];
+			antchf[i][j] = chf[i][j];
+		}
+	}
+}
+
+void AlocacaoChaves::volta_chaves_anteriores()
+{
+	for (int i = 1; i < num_AL; i++)
+	{
+		for (int j = 1; j < linha_dados; j++)
+		{
+			chi[i][j] = antchi[i][j];
+			chf[i][j] = antchf[i][j];
+		}
+	}
+}
+
 void GVNS::sorteiochaves(int numch, int camada[linha_dados][linha_dados], int posicao_camada[linha_dados], int alimentador)
 {
 	int barras_camada[linha_dados];
@@ -1309,66 +1342,208 @@ void GVNS::primeiraaloc() //alterar conforme o numero de alimentadores, modifica
 float GVNS::v1_VND(vector <int> chavesv1)
 {
 	//troca as chaves para o vizinho
-	//chavesv1 é a posicao das chaves
+	//chavesv1 é o numero das chaves
 
-	vector <int> chvizinhas;
+	int identf = 0;
+	vector <int> pos_vizinhas;
+
 	bool repetepos = false;
 
-	vector <int> result_parcial;
+	vector <float> result_parcial; //resultado parcial da funcao objetivo
+	float soluc = 0.0;
 
-	//identificar chaves e muda-las para a melhor configuração
+	vector<int>auxfunc; //vetor auxiliar das funcoes
+	vector <vector<int>> identch; //sempre tera duas posicoes:: 1)chi - 2)chf
+
+
+	// 1) localizar chaves sorteadas
 
 	for (int i = 0; i < chavesv1.size(); i++)
 	{
-		//i: posicao das chaves
-		
+		for (int j = 1; j < num_AL; j++)
+		{
+			for (int k = 1; k < linha_dados; k++)
+			{
+				if (ac.chi[j][k] != 0 && ac.chf[j][k] != 0)
+				{
+					identf++;
 
-		//1) identificar chaves vizinhas
+					if (identf == chavesv1[i])
+					{
+						auxfunc.push_back(ac.chi[j][k]);
+						auxfunc.push_back(ac.chf[j][k]);
+
+						identch.push_back(auxfunc);
+						auxfunc.clear();
+					}
+				}
+			}
+		}
+	}
+
+	//2) identificar chaves vizinhas e colocalas em um vetor e executar demais passos
+
+	for (int i = 0; i < identch.size(); i++)
+	{
 		for (int k = 1; k < linha_dados; k++)
 		{
-			if (ac.chi[chavesv1[i]] == ac.chi[k] && ac.chf[chavesv1[i]] == ac.chf[k]) { continue; }
-
-			else if (ac.chi[k] == ac.chi[chavesv1[i]] || ac.chf[k] == ac.chi[chavesv1[i]]) 
+			if (identch[i][0] == ps.noi[k])
 			{
-				repetepos = false;
-
-				for (int j = 0; j < chvizinhas.size(); j++)
+				if (identch[i][1] == ps.nof[k]) { continue; }
+				else
 				{
-					if (chvizinhas[j] == k) { repetepos = true; }
-				}
+					repetepos = false;
+					for (int j = 0; j < pos_vizinhas.size(); j++)
+					{
+						if (pos_vizinhas[j] == k) { repetepos = true; }
+					}
 
-				if (repetepos == false)
-				{
-					chvizinhas.push_back(k);
+					if (repetepos == false)
+					{
+						if (ps.candidato_aloc[k] == 1)
+						{
+							pos_vizinhas.push_back(k);
+						}
+					}
 				}
 			}
 
-			else if (ac.chi[k] == ac.chf[chavesv1[i]] || ac.chf[k] == ac.chf[chavesv1[i]])
+			if (identch[i][0] == ps.nof[k])
 			{
-				repetepos = false;
-
-				for (int j = 0; j < chvizinhas.size(); j++)
+				if (identch[i][1] == ps.noi[k]) { continue; }
+				else
 				{
-					if (chvizinhas[j] == k) { repetepos = true; }
+					repetepos = false;
+					for (int j = 0; j < pos_vizinhas.size(); j++)
+					{
+						if (pos_vizinhas[j] == k) { repetepos = true; }
+					}
+
+					if (repetepos == false)
+					{
+						if (ps.candidato_aloc[k] == 1)
+						{
+							pos_vizinhas.push_back(k);
+						}
+					}
+					
 				}
+			}
 
-				if (repetepos == false)
+			if (identch[i][1] == ps.noi[k])
+			{
+				if (identch[i][0] == ps.nof[k]) { continue; }
+				else
 				{
-					chvizinhas.push_back(k);
+					repetepos = false;
+					for (int j = 0; j < pos_vizinhas.size(); j++)
+					{
+						if (pos_vizinhas[j] == k) { repetepos = true; }
+					}
+
+					if (repetepos == false)
+					{
+						if (ps.candidato_aloc[k] == 1)
+						{
+							pos_vizinhas.push_back(k);
+						}
+					}
+				}
+			}
+
+			if (identch[i][1] == ps.nof[k])
+			{
+				if (identch[i][0] == ps.noi[k]) { continue; }
+				else
+				{
+					repetepos = false;
+					for (int j = 0; j < pos_vizinhas.size(); j++)
+					{
+						if (pos_vizinhas[j] == k) { repetepos = true; }
+					}
+
+					if (repetepos == false)
+					{
+						if (ps.candidato_aloc[k] == 1)
+						{
+							pos_vizinhas.push_back(k);
+						}
+					}
 				}
 			}
 		}
 
-		//2) mover a chave e encontrar o melhor valor de função objetivo
+		//3) Analisar qual o melhor vizinho
 
-		//fazer for com o vetor de chvizinhas para esta analise
+		ac.chaves_anteriores(); //salva chaves anteriores
+
+		int pos1ch = 0;
+		int pos2ch = 0;
+
+		//identificando chave para mudar
+		for (int t = 1; t < num_AL; t++)
+		{
+			for (int a = 1; a < linha_dados; a++)
+			{
+				if (ac.chi[t][a] == identch[i][0] && ac.chf[t][a] == identch[i][1])
+				{
+					pos1ch = t;
+					pos2ch = a;
+				}
+			}
+		}
+
+		//analisar a melhor posicao
+		soluc = 0.0;
+
+		for (int t = 0; t < pos_vizinhas.size(); t++)
+		{
+			ac.chi[pos1ch][pos2ch] = ps.noi[pos_vizinhas[t]];
+			ac.chf[pos1ch][pos2ch] = ps.nof[pos_vizinhas[t]];
+
+			soluc = ac.calculo_funcao_objetivo();
+			result_parcial.push_back(soluc);
+		}
+
+		//pegar menor solucao
+
+		soluc = result_parcial[0];
+		int pos = 0;
 
 
+		for (int t = 0; t < result_parcial.size(); t++)
+		{
+			if (soluc > result_parcial[t])
+			{
+				soluc = result_parcial[t];
+				pos = t;
+			}
+		}
 
-		//
+		// 4) comparar e trocar chave se necessario
+
+		if (soluc < gvns.vnd_current)
+		{
+			gvns.vnd_current = soluc;
+
+			ac.chi[pos1ch][pos2ch] = ps.noi[pos];
+			ac.chf[pos1ch][pos2ch] = ps.nof[pos];
+
+		}
+		else
+		{
+			ac.volta_chaves_anteriores();
+		}
+
+
+		//por fim, limpar vetores
+		result_parcial.clear();
+		pos_vizinhas.clear();
 	}
 
+	
 
+	return(gvns.vnd_current);
 
 }
 
@@ -1381,32 +1556,29 @@ float GVNS::VND(vector <int> chaves)
 {
 	//O VND tem o objetivo de intensificar a busca do algoritmo
 
-	float vnd_current = 0.0;
-	float vnd_incumbent = 0.0;
-
-	vnd_incumbent = ac.calculo_funcao_objetivo();
+	gvns.vnd_incumbent = ac.calculo_funcao_objetivo();
 
 inicioVND:
 
-	vnd_current = gvns.v1_VND(chaves);
+	gvns.vnd_current = gvns.v1_VND(chaves);
 
-	if (vnd_current < vnd_incumbent)
+	if (gvns.vnd_current < gvns.vnd_incumbent)
 	{
-		vnd_incumbent = vnd_current;
+		gvns.vnd_incumbent = gvns.vnd_current;
 		goto inicioVND;
 	}
 
-	vnd_current = gvns.v2_VND(chaves);
+	gvns.vnd_current = gvns.v2_VND(chaves);
 
-	if (vnd_current < vnd_incumbent)
+	if (gvns.vnd_current < gvns.vnd_incumbent)
 	{
-		vnd_incumbent = vnd_current;
+		gvns.vnd_incumbent = gvns.vnd_current;
 		goto inicioVND;
 	}
 
 	//acaba o vnd
 
-	return(vnd_incumbent);
+	return(gvns.vnd_incumbent);
 }
 
 float GVNS::v1_RVNS()
@@ -1447,8 +1619,6 @@ float GVNS::v1_RVNS()
 int main()
 {
 	int run_alg = 0;
-	float current_solution = 0.0;
-	float incumbent_solution = 0.0;
 	int itGVNS = 0;
 	vector <float> atualizãcaoFO;
 	vector <vector<float>> matriz_atualizacaoFO;
@@ -1461,8 +1631,8 @@ rodar_dnv:
 	//--------------------------------------------------------------------------
 
 	//variaveis a serem analisadas
-	current_solution = 0.0;
-	incumbent_solution = 0.0;
+	gvns.current_solution = 0.0;
+	gvns.incumbent_solution = 0.0;
 
 	run_alg++;
 
@@ -1533,12 +1703,12 @@ metaheuristicGVNS:
 
 	itGVNS++;
 
-	current_solution = gvns.v1_RVNS();
+	gvns.current_solution = gvns.v1_RVNS();
 
-	if (current_solution < incumbent_solution)
+	if (gvns.current_solution < gvns.incumbent_solution)
 	{
-		incumbent_solution = current_solution;
-		atualizãcaoFO.push_back(incumbent_solution);
+		gvns.incumbent_solution = gvns.current_solution;
+		atualizãcaoFO.push_back(gvns.incumbent_solution);
 		goto metaheuristicGVNS;
 	}
 
