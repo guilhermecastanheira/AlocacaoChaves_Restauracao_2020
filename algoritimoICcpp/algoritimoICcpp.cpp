@@ -1358,8 +1358,10 @@ float GVNS::v1_VND(vector <int> chavesv1)
 
 	// 1) localizar chaves sorteadas
 
-	for (int i = 0; i < chavesv1.size(); i++)
+ 	for (int i = 0; i < chavesv1.size(); i++)
 	{
+		identf = 0;
+
 		for (int j = 1; j < num_AL; j++)
 		{
 			for (int k = 1; k < linha_dados; k++)
@@ -1549,6 +1551,8 @@ float GVNS::v1_VND(vector <int> chavesv1)
 
 float GVNS::v2_VND(vector <int> chavesv2)
 {
+	int a = 0;
+	return(a);
 
 }
 
@@ -1618,15 +1622,18 @@ float GVNS::v1_RVNS()
 
 int main()
 {
+	srand(static_cast <unsigned int> (time(NULL)));	//faz a aleatoriedade com base no relogio
+
 	int run_alg = 0;
 	int itGVNS = 0;
-	vector <float> atualizãcaoFO;
+
+	vector <float> atualizacaoFO;
 	vector <vector<float>> matriz_atualizacaoFO;
 	vector <int> iteracoesGVNS;
 
 rodar_dnv:
 
-	srand(static_cast <unsigned int> (time(NULL)));	//faz a aleatoriedade com base no relogio
+	
 
 	//--------------------------------------------------------------------------
 
@@ -1708,15 +1715,15 @@ metaheuristicGVNS:
 	if (gvns.current_solution < gvns.incumbent_solution)
 	{
 		gvns.incumbent_solution = gvns.current_solution;
-		atualizãcaoFO.push_back(gvns.incumbent_solution);
+		atualizacaoFO.push_back(gvns.incumbent_solution);
 		goto metaheuristicGVNS;
 	}
 
 	
 
 	//end metaheuristicGVNS
-	matriz_atualizacaoFO.push_back(atualizãcaoFO);
-	atualizãcaoFO.clear();
+	matriz_atualizacaoFO.push_back(atualizacaoFO);
+	atualizacaoFO.clear();
 
 	iteracoesGVNS.push_back(itGVNS);
 	itGVNS = 0;
@@ -1735,3 +1742,6 @@ metaheuristicGVNS:
 	
 	cout << "\n" << "Contador Total Fluxo de Potencia: " << fxp.contadorFXP << endl;
 }
+
+
+// metaheuristica funcionando ate onde programei, o que nao esta rolando é as chaves darem certo
