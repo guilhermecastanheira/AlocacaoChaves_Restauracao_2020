@@ -183,14 +183,16 @@ public:
 	float v2_RVNS(); //escolher todas as chaves de um alimentador sorteado e aplicar VND
 	float v3_RVNS(); //sortear duas chaves quaisquer para outra posição e aplicar VND
 	float v4_RVNS(); //sortear 2 < n < numero_max_chaves_sistema e reposiciona-las para outra posição, e aplicar VND nas n chaves 
+
+	float v1_VND(vector<int>chavesv1); //mover para adjacente
+	float v2_VND(vector<int>chavesv2); //mover para adjacente do adjacente
+
 	float VND(vector<int>chaves);
 
 private:
 
 	void sorteiochaves(int numch, int camada[linha_dados][linha_dados], int posicao_camada[linha_dados], int alimentador); //sorteio inicial das chaves
-	float v1_VND(vector<int>chavesv1); //mover para adjacente
-	float v2_VND(vector<int>chavesv2); //mover para adjacente do adjacente
-
+	
 }gvns;
 
 
@@ -1341,7 +1343,7 @@ void GVNS::primeiraaloc() //alterar conforme o numero de alimentadores, modifica
 
 float GVNS::v1_VND(vector <int> chavesv1)
 {
-	//troca as chaves para o vizinho
+	//troca as chaves para o vizinho, ou seja, para o adjacente
 	//chavesv1 é o numero das chaves
 
 	int identf = 0;
@@ -1495,13 +1497,21 @@ float GVNS::v1_VND(vector <int> chavesv1)
 			}
 		}
 
-		//analisar a melhor posicao
+		//analisar a melhor posicao - IMPORTANTE -
 		soluc = 0.0;
+		int pos_vetorcaso_nao_melhor = ac.posicaochaves[pos1ch][pos2ch];
 
 		for (int t = 0; t < pos_vizinhas.size(); t++)
 		{
+			//atribuir nova chave
 			ac.chi[pos1ch][pos2ch] = ps.noi[pos_vizinhas[t]];
 			ac.chf[pos1ch][pos2ch] = ps.nof[pos_vizinhas[t]];
+
+			//atribuir nova posicao da chave
+			ac.posicaochaves[pos1ch][pos2ch] = pos_vizinhas[t];
+
+			//refazer novas camadas
+			ac.secoes_alimentador();
 
 			soluc = ac.calculo_funcao_objetivo();
 			result_parcial.push_back(soluc);
@@ -1511,7 +1521,6 @@ float GVNS::v1_VND(vector <int> chavesv1)
 
 		soluc = result_parcial[0];
 		int pos = 0;
-
 
 		for (int t = 0; t < result_parcial.size(); t++)
 		{
@@ -1531,10 +1540,14 @@ float GVNS::v1_VND(vector <int> chavesv1)
 			ac.chi[pos1ch][pos2ch] = ps.noi[pos];
 			ac.chf[pos1ch][pos2ch] = ps.nof[pos];
 
+			ac.posicaochaves[pos1ch][pos2ch] = pos;
+
 		}
 		else
 		{
+			ac.posicaochaves[pos1ch][pos2ch] = pos_vetorcaso_nao_melhor;
 			ac.volta_chaves_anteriores();
+
 		}
 
 
@@ -1551,8 +1564,338 @@ float GVNS::v1_VND(vector <int> chavesv1)
 
 float GVNS::v2_VND(vector <int> chavesv2)
 {
-	int a = 0;
-	return(a);
+	//troca as chaves para o vizinho do vizinho, ou seja, adjacente do adjacente
+	//chavesv2 é o numero das chaves
+
+	int identf = 0;
+	vector <int> pos_vizinhas;
+
+	bool repetepos = false;
+
+	vector <float> result_parcial; //resultado parcial da funcao objetivo
+	float soluc = 0.0;
+
+	vector<int>auxfunc; //vetor auxiliar das funcoes
+	vector <vector<int>> identch; //sempre tera duas posicoes:: 1)chi - 2)chf
+	vector <vector<int>> identch_aux; //sempre tera duas posicoes:: 1)chi - 2)chf - eh o vetor auxiliar usado para encontrar as chaves
+
+
+	// 1) localizar chaves sorteadas
+
+	for (int i = 0; i < chavesv2.size(); i++)
+	{
+		identf = 0;
+
+		for (int j = 1; j < num_AL; j++)
+		{
+			for (int k = 1; k < linha_dados; k++)
+			{
+				if (ac.chi[j][k] != 0 && ac.chf[j][k] != 0)
+				{
+					identf++;
+
+					if (identf == chavesv2[i])
+					{
+						auxfunc.push_back(ac.chi[j][k]);
+						auxfunc.push_back(ac.chf[j][k]);
+
+						identch.push_back(auxfunc);
+						auxfunc.clear();
+					}
+				}
+			}
+		}
+	}
+
+	//2) identificar chaves vizinhas e colocalas em um vetor e executar demais passos
+
+	for (int i = 0; i < identch.size(); i++)
+	{
+		///////////////////////////////////////////////////////////////////////////////
+
+		//consertar esta parte - faz o adjacente
+
+		for (int k = 1; k < linha_dados; k++)
+		{
+			if (identch[i][0] == ps.noi[k])
+			{
+				if (identch[i][1] == ps.nof[k]) { continue; }
+				else
+				{
+					repetepos = false;
+					for (int j = 0; j < pos_vizinhas.size(); j++)
+					{
+						if (pos_vizinhas[j] == k) { repetepos = true; }
+					}
+
+					if (repetepos == false)
+					{
+						if (ps.candidato_aloc[k] == 1)
+						{
+							pos_vizinhas.push_back(k);
+						}
+					}
+				}
+			}
+
+			if (identch[i][0] == ps.nof[k])
+			{
+				if (identch[i][1] == ps.noi[k]) { continue; }
+				else
+				{
+					repetepos = false;
+					for (int j = 0; j < pos_vizinhas.size(); j++)
+					{
+						if (pos_vizinhas[j] == k) { repetepos = true; }
+					}
+
+					if (repetepos == false)
+					{
+						if (ps.candidato_aloc[k] == 1)
+						{
+							pos_vizinhas.push_back(k);
+						}
+					}
+
+				}
+			}
+
+			if (identch[i][1] == ps.noi[k])
+			{
+				if (identch[i][0] == ps.nof[k]) { continue; }
+				else
+				{
+					repetepos = false;
+					for (int j = 0; j < pos_vizinhas.size(); j++)
+					{
+						if (pos_vizinhas[j] == k) { repetepos = true; }
+					}
+
+					if (repetepos == false)
+					{
+						if (ps.candidato_aloc[k] == 1)
+						{
+							pos_vizinhas.push_back(k);
+						}
+					}
+				}
+			}
+
+			if (identch[i][1] == ps.nof[k])
+			{
+				if (identch[i][0] == ps.noi[k]) { continue; }
+				else
+				{
+					repetepos = false;
+					for (int j = 0; j < pos_vizinhas.size(); j++)
+					{
+						if (pos_vizinhas[j] == k) { repetepos = true; }
+					}
+
+					if (repetepos == false)
+					{
+						if (ps.candidato_aloc[k] == 1)
+						{
+							pos_vizinhas.push_back(k);
+						}
+					}
+				}
+			}
+		}
+
+		//atribuir as chaves e realizar novamente o processo
+		auxfunc.clear();
+
+		for (int t = 0; t < pos_vizinhas.size(); t++)
+		{
+			auxfunc.push_back(ps.noi[pos_vizinhas[t]]);
+			auxfunc.push_back(ps.nof[pos_vizinhas[t]]);
+
+			identch_aux.push_back(auxfunc);
+			auxfunc.clear();
+		}
+
+		pos_vizinhas.clear(); //limpa as posicoes para pegar as novas
+
+		//copiar passo de identificação para pegar os proximos adjacentes
+		for (int t = 0; t < identch_aux.size(); t++)
+		{
+			for (int k = 1; k < linha_dados; k++)
+			{
+				if (identch_aux[i][0] == ps.noi[k])
+				{
+					if (identch_aux[i][1] == ps.nof[k]) { continue; }
+					else
+					{
+						repetepos = false;
+						for (int j = 0; j < pos_vizinhas.size(); j++)
+						{
+							if (pos_vizinhas[j] == k) { repetepos = true; }
+						}
+
+						if (repetepos == false)
+						{
+							if (ps.candidato_aloc[k] == 1)
+							{
+								pos_vizinhas.push_back(k);
+							}
+						}
+					}
+				}
+
+				if (identch_aux[i][0] == ps.nof[k])
+				{
+					if (identch_aux[i][1] == ps.noi[k]) { continue; }
+					else
+					{
+						repetepos = false;
+						for (int j = 0; j < pos_vizinhas.size(); j++)
+						{
+							if (pos_vizinhas[j] == k) { repetepos = true; }
+						}
+
+						if (repetepos == false)
+						{
+							if (ps.candidato_aloc[k] == 1)
+							{
+								pos_vizinhas.push_back(k);
+							}
+						}
+
+					}
+				}
+
+				if (identch_aux[i][1] == ps.noi[k])
+				{
+					if (identch_aux[i][0] == ps.nof[k]) { continue; }
+					else
+					{
+						repetepos = false;
+						for (int j = 0; j < pos_vizinhas.size(); j++)
+						{
+							if (pos_vizinhas[j] == k) { repetepos = true; }
+						}
+
+						if (repetepos == false)
+						{
+							if (ps.candidato_aloc[k] == 1)
+							{
+								pos_vizinhas.push_back(k);
+							}
+						}
+					}
+				}
+
+				if (identch_aux[i][1] == ps.nof[k])
+				{
+					if (identch_aux[i][0] == ps.noi[k]) { continue; }
+					else
+					{
+						repetepos = false;
+						for (int j = 0; j < pos_vizinhas.size(); j++)
+						{
+							if (pos_vizinhas[j] == k) { repetepos = true; }
+						}
+
+						if (repetepos == false)
+						{
+							if (ps.candidato_aloc[k] == 1)
+							{
+								pos_vizinhas.push_back(k);
+							}
+						}
+					}
+				}
+			}
+		}
+
+
+
+
+		//////////////////////////////////////////////////////////////////////////////////////
+
+		//3) Analisar qual o melhor vizinho
+
+		ac.chaves_anteriores(); //salva chaves anteriores
+
+		int pos1ch = 0;
+		int pos2ch = 0;
+
+		//identificando chave para mudar
+		for (int t = 1; t < num_AL; t++)
+		{
+			for (int a = 1; a < linha_dados; a++)
+			{
+				if (ac.chi[t][a] == identch[i][0] && ac.chf[t][a] == identch[i][1])
+				{
+					pos1ch = t;
+					pos2ch = a;
+				}
+			}
+		}
+
+		//analisar a melhor posicao - IMPORTANTE -
+		soluc = 0.0;
+		int pos_vetorcaso_nao_melhor = ac.posicaochaves[pos1ch][pos2ch];
+
+		for (int t = 0; t < pos_vizinhas.size(); t++)
+		{
+			//atribuir nova chave
+			ac.chi[pos1ch][pos2ch] = ps.noi[pos_vizinhas[t]];
+			ac.chf[pos1ch][pos2ch] = ps.nof[pos_vizinhas[t]];
+
+			//atribuir nova posicao da chave
+			ac.posicaochaves[pos1ch][pos2ch] = pos_vizinhas[t];
+
+			//refazer novas camadas
+			ac.secoes_alimentador();
+
+			soluc = ac.calculo_funcao_objetivo();
+			result_parcial.push_back(soluc);
+		}
+
+		//pegar menor solucao - consequentemente a melhor
+
+		soluc = result_parcial[0];
+		int pos = 0;
+
+		for (int t = 0; t < result_parcial.size(); t++)
+		{
+			if (soluc > result_parcial[t])
+			{
+				soluc = result_parcial[t];
+				pos = t;
+			}
+		}
+
+		// 4) comparar e trocar chave se necessario
+
+		if (soluc < gvns.vnd_current)
+		{
+			gvns.vnd_current = soluc;
+
+			ac.chi[pos1ch][pos2ch] = ps.noi[pos];
+			ac.chf[pos1ch][pos2ch] = ps.nof[pos];
+
+			ac.posicaochaves[pos1ch][pos2ch] = pos;
+
+		}
+		else
+		{
+			ac.posicaochaves[pos1ch][pos2ch] = pos_vetorcaso_nao_melhor;
+			ac.volta_chaves_anteriores();
+		}
+
+
+		//por fim, limpar vetores
+		result_parcial.clear();
+		pos_vizinhas.clear();
+	}
+
+
+
+	return(gvns.vnd_current);
+
 
 }
 
@@ -1561,6 +1904,7 @@ float GVNS::VND(vector <int> chaves)
 	//O VND tem o objetivo de intensificar a busca do algoritmo
 
 	gvns.vnd_incumbent = ac.calculo_funcao_objetivo();
+	gvns.vnd_current = gvns.vnd_incumbent;
 
 inicioVND:
 
@@ -1742,6 +2086,3 @@ metaheuristicGVNS:
 	
 	cout << "\n" << "Contador Total Fluxo de Potencia: " << fxp.contadorFXP << endl;
 }
-
-
-// metaheuristica funcionando ate onde programei, o que nao esta rolando é as chaves darem certo
