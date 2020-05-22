@@ -1537,10 +1537,10 @@ float GVNS::v1_VND(vector <int> chavesv1)
 		{
 			gvns.vnd_current = soluc;
 
-			ac.chi[pos1ch][pos2ch] = ps.noi[pos];
-			ac.chf[pos1ch][pos2ch] = ps.nof[pos];
+			ac.chi[pos1ch][pos2ch] = ps.noi[pos_vizinhas[pos]];
+			ac.chf[pos1ch][pos2ch] = ps.nof[pos_vizinhas[pos]];
 
-			ac.posicaochaves[pos1ch][pos2ch] = pos;
+			ac.posicaochaves[pos1ch][pos2ch] = pos_vizinhas[pos];
 
 		}
 		else
@@ -1718,99 +1718,158 @@ float GVNS::v2_VND(vector <int> chavesv2)
 		pos_vizinhas.clear(); //limpa as posicoes para pegar as novas
 
 		//copiar passo de identificação para pegar os proximos adjacentes
+		bool partedachave = false;
+
 		for (int t = 0; t < identch_aux.size(); t++)
 		{
 			for (int k = 1; k < linha_dados; k++)
 			{
-				if (identch_aux[i][0] == ps.noi[k])
+				if (identch_aux[t][0] == ps.noi[k])
 				{
-					if (identch_aux[i][1] == ps.nof[k]) { continue; }
+					if (identch_aux[t][1] == ps.nof[k]) { continue; }
 					else
 					{
-						repetepos = false;
-						for (int j = 0; j < pos_vizinhas.size(); j++)
+						partedachave = false;
+						for (int j = 0; j < identch.size(); j++)
 						{
-							if (pos_vizinhas[j] == k) { repetepos = true; }
+							for (int z = 0; z < identch[j].size(); z++)
+							{
+								if (identch[j][z] == ps.noi[k] || identch[j][z] == ps.nof[k])
+								{
+									partedachave = true;
+								}
+							}
 						}
 
-						if (repetepos == false)
+						if (partedachave == false)
 						{
-							if (ps.candidato_aloc[k] == 1)
+							repetepos = false;
+							for (int j = 0; j < pos_vizinhas.size(); j++)
 							{
-								pos_vizinhas.push_back(k);
+								if (pos_vizinhas[j] == k) { repetepos = true; }
+							}
+
+							if (repetepos == false)
+							{
+								if (ps.candidato_aloc[k] == 1)
+								{
+									pos_vizinhas.push_back(k);
+								}
+							}
+						}	
+					}
+				}
+
+				if (identch_aux[t][0] == ps.nof[k])
+				{
+					if (identch_aux[t][1] == ps.noi[k]) { continue; }
+					else
+					{
+						partedachave = false;
+						for (int j = 0; j < identch.size(); j++)
+						{
+							for (int z = 0; z < identch[j].size(); z++)
+							{
+								if (identch[j][z] == ps.noi[k] || identch[j][z] == ps.nof[k])
+								{
+									partedachave = true;
+								}
+							}
+						}
+
+						if (partedachave == false)
+						{
+							repetepos = false;
+							for (int j = 0; j < pos_vizinhas.size(); j++)
+							{
+								if (pos_vizinhas[j] == k) { repetepos = true; }
+							}
+
+							if (repetepos == false)
+							{
+								if (ps.candidato_aloc[k] == 1)
+								{
+									pos_vizinhas.push_back(k);
+								}
+							}
+						}
+
+					}
+				}
+
+				if (identch_aux[t][1] == ps.noi[k])
+				{
+					if (identch_aux[t][0] == ps.nof[k]) { continue; }
+					else
+					{
+						partedachave = false;
+						for (int j = 0; j < identch.size(); j++)
+						{
+							for (int z = 0; z < identch[j].size(); z++)
+							{
+								if (identch[j][z] == ps.noi[k] || identch[j][z] == ps.nof[k])
+								{
+									partedachave = true;
+								}
+							}
+						}
+
+						if (partedachave == false)
+						{
+							repetepos = false;
+							for (int j = 0; j < pos_vizinhas.size(); j++)
+							{
+								if (pos_vizinhas[j] == k) { repetepos = true; }
+							}
+
+							if (repetepos == false)
+							{
+								if (ps.candidato_aloc[k] == 1)
+								{
+									pos_vizinhas.push_back(k);
+								}
 							}
 						}
 					}
 				}
 
-				if (identch_aux[i][0] == ps.nof[k])
+				if (identch_aux[t][1] == ps.nof[k])
 				{
-					if (identch_aux[i][1] == ps.noi[k]) { continue; }
+					if (identch_aux[t][0] == ps.noi[k]) { continue; }
 					else
 					{
-						repetepos = false;
-						for (int j = 0; j < pos_vizinhas.size(); j++)
+						partedachave = false;
+						for (int j = 0; j < identch.size(); j++)
 						{
-							if (pos_vizinhas[j] == k) { repetepos = true; }
-						}
-
-						if (repetepos == false)
-						{
-							if (ps.candidato_aloc[k] == 1)
+							for (int z = 0; z < identch[j].size(); z++)
 							{
-								pos_vizinhas.push_back(k);
+								if (identch[j][z] == ps.noi[k] || identch[j][z] == ps.nof[k])
+								{
+									partedachave = true;
+								}
 							}
 						}
 
-					}
-				}
-
-				if (identch_aux[i][1] == ps.noi[k])
-				{
-					if (identch_aux[i][0] == ps.nof[k]) { continue; }
-					else
-					{
-						repetepos = false;
-						for (int j = 0; j < pos_vizinhas.size(); j++)
+						if (partedachave == false)
 						{
-							if (pos_vizinhas[j] == k) { repetepos = true; }
-						}
-
-						if (repetepos == false)
-						{
-							if (ps.candidato_aloc[k] == 1)
+							repetepos = false;
+							for (int j = 0; j < pos_vizinhas.size(); j++)
 							{
-								pos_vizinhas.push_back(k);
+								if (pos_vizinhas[j] == k) { repetepos = true; }
 							}
-						}
-					}
-				}
 
-				if (identch_aux[i][1] == ps.nof[k])
-				{
-					if (identch_aux[i][0] == ps.noi[k]) { continue; }
-					else
-					{
-						repetepos = false;
-						for (int j = 0; j < pos_vizinhas.size(); j++)
-						{
-							if (pos_vizinhas[j] == k) { repetepos = true; }
-						}
-
-						if (repetepos == false)
-						{
-							if (ps.candidato_aloc[k] == 1)
+							if (repetepos == false)
 							{
-								pos_vizinhas.push_back(k);
+								if (ps.candidato_aloc[k] == 1)
+								{
+									pos_vizinhas.push_back(k);
+								}
 							}
 						}
 					}
 				}
 			}
 		}
-
-
-
 
 		//////////////////////////////////////////////////////////////////////////////////////
 
@@ -1874,10 +1933,10 @@ float GVNS::v2_VND(vector <int> chavesv2)
 		{
 			gvns.vnd_current = soluc;
 
-			ac.chi[pos1ch][pos2ch] = ps.noi[pos];
-			ac.chf[pos1ch][pos2ch] = ps.nof[pos];
+			ac.chi[pos1ch][pos2ch] = ps.noi[pos_vizinhas[pos]];
+			ac.chf[pos1ch][pos2ch] = ps.nof[pos_vizinhas[pos]];
 
-			ac.posicaochaves[pos1ch][pos2ch] = pos;
+			ac.posicaochaves[pos1ch][pos2ch] = pos_vizinhas[pos];
 
 		}
 		else
@@ -1890,6 +1949,8 @@ float GVNS::v2_VND(vector <int> chavesv2)
 		//por fim, limpar vetores
 		result_parcial.clear();
 		pos_vizinhas.clear();
+		auxfunc.clear();
+		identch_aux.clear();
 	}
 
 
