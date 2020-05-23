@@ -172,22 +172,29 @@ class GVNS
 {
 public:
 
+	//variaveis de solucao
 	float current_solution = 0.0;
 	float incumbent_solution = 0.0;
-
 	float vnd_current = 0.0;
 	float vnd_incumbent = 0.0;
+
+	//contadores
+	int q_rvns1 = 0;
+	int q_rvns2 = 0;
+	int q_rvns3 = 0;
+	int q_vnd1 = 0;
+	int q_vnd2 = 0;
 	
+	//funcoes
 	void primeiraaloc();
 	float v1_RVNS(); //sortear duas chaves e aplicar VND
 	float v2_RVNS(); //escolher todas as chaves de um alimentador sorteado e aplicar VND
 	float v3_RVNS(); //sortear duas chaves quaisquer para outra posição e aplicar VND
 	float v4_RVNS(); //sortear 2 < n < numero_max_chaves_sistema e reposiciona-las para outra posição, e aplicar VND nas n chaves 
-
+	
+	float VND(vector<int>chaves);
 	float v1_VND(vector<int>chavesv1); //mover para adjacente
 	float v2_VND(vector<int>chavesv2); //mover para adjacente do adjacente
-
-	float VND(vector<int>chaves);
 
 private:
 
@@ -1218,7 +1225,7 @@ float AlocacaoChaves::calculo_funcao_objetivo()
 			fxp.fluxo_potencia();
 		}
 	}
-
+	
 	cout <<"FO: " << valorFO << endl;
 
 	return(valorFO);
@@ -1969,6 +1976,7 @@ inicioVND:
 	if (gvns.vnd_current < gvns.vnd_incumbent)
 	{
 		cout << "1-VND" << endl;
+		gvns.q_vnd1++;
 
 		gvns.vnd_incumbent = gvns.vnd_current;
 		goto inicioVND;
@@ -1979,6 +1987,7 @@ inicioVND:
 	if (gvns.vnd_current < gvns.vnd_incumbent)
 	{
 		cout << "2-VND" << endl;
+		gvns.q_vnd2++;
 
 		gvns.vnd_incumbent = gvns.vnd_current;
 		goto inicioVND;
@@ -2079,13 +2088,247 @@ float GVNS::v3_RVNS()
 	float solution = 0.0;
 	int sort_AL1 = 0;
 	int sort_AL2 = 0;
-	int sort_ch1 = 0;
-	int sort_ch2 = 0;
+	int sort_ch = 0;
+	int numerochaves = 0;
+	bool aux = false;
+	int contadorchaves = 0;
 
-
-	return(0);
-
+	int pos_aleat = 0;
+	int incremento = 0;
 	
+	vector <int> posAL;
+	vector <int> barsAL;
+	vector <int> posCH;
+	vector <int> mudarchaves;
+
+	//sortear alimentadores
+	while (sort_AL1 == sort_AL2)
+	{
+		sort_AL1 = rand() % num_AL + 1; //alimentador 1
+		sort_AL2 = rand() % num_AL + 1; //alimentador 2
+	}
+
+	//para o alimentador 1 sorteado
+
+	for (int i = 1; i < linha_dados; i++)
+	{
+		if (ac.adjacente_chaves[sort_AL1][1][i] != 0)
+		{
+			barsAL.push_back(ac.adjacente_chaves[sort_AL1][1][i]); //pega as barras do alimentador
+		}	
+	}
+
+	for (int i = 0; i < barsAL.size(); i++)
+	{
+		for (int j = 1; j < linha_dados; j++)
+		{
+			if (ps.nof[j] == barsAL[i])
+			{
+				posAL.push_back(j); //pega a posicao das barras
+			}
+		}
+	}
+
+	numerochaves = 0;
+	for (int i = 1; i < linha_dados; i++)
+	{
+		if (ac.chf[sort_AL1][i] != 0)
+		{
+			numerochaves++; //quantidade de chaves
+			posCH.push_back(ac.posicaochaves[sort_AL1][i]); //guarda a posicao das chaves
+		}
+	}
+
+	//sorteando chaves
+	sort_ch = rand() % numerochaves + 1;
+
+	incremento = 0;
+	while (sort_ch != 0)
+	{
+		incremento++;
+
+	newpos:
+		pos_aleat = rand() % posAL.size() + 1;
+
+		aux = false;
+
+		for (int i = 0; i < posCH.size(); i++)
+		{
+			if (posAL[pos_aleat] == posCH[i]) { aux = true; }
+			if (posAL[pos_aleat] == ac.posicaochaves[sort_AL1][i]) { aux == true; }
+		}
+		
+		if (aux == false)
+		{
+			ac.posicaochaves[sort_AL1][incremento] = posAL[pos_aleat];
+			ac.secoes_alimentador();
+			sort_ch--;
+		}
+		else
+		{
+			goto newpos;
+		}
+	}
+
+	while (posCH.size() > sort_ch)
+	{
+		random_shuffle(posCH.begin(), posCH.end()); //mistura elementos 
+		posCH.erase(posCH.end()); //apaga ultimo elemento
+	}
+
+	for (int i = 1; i < linha_dados; i++)
+	{
+		if (ac.posicaochaves[sort_AL1][i] == 0) { continue; }
+
+		aux = false;
+		for (int j = 0; j < posCH.size(); j++)
+		{
+			if (ac.posicaochaves[sort_AL1][i] == posCH[j])
+			{
+				sort_ch = rand() % posAL.size() + 1;
+
+				for (int k = 1; k < linha_dados; k++)
+				{
+					if (ac.posicaochaves[sort_AL1][k] == 0) { continue; }
+
+					else if (ac.posicaochaves[sort_AL1][k] == posAL[sort_ch]) { aux = true; }
+				}
+
+				if (aux == false)
+				{
+					ac.posicaochaves[sort_AL1][i] = posAL[sort_ch]; //realocou a chave
+					ac.chi[sort_AL1][i] = ps.noi[posAL[sort_ch]];
+					ac.chf[sort_AL1][i] = ps.nof[posAL[sort_ch]];
+
+					ac.secoes_alimentador(); //refez secoes
+
+					//selecionar chaves mudadas
+					contadorchaves = 0;
+					for (int l = 1; l < linha_dados; l++)
+					{
+						for (int m = 1; m < linha_dados; m++)
+						{
+							if (ac.chi[l][m] != 0 && ac.chf[l][m] != 0)
+							{
+								contadorchaves++;
+
+								if (ac.posicaochaves[l][m] == ac.posicaochaves[sort_AL1][i])
+								{
+									mudarchaves.push_back(contadorchaves);
+								}
+							}
+						}
+					}
+
+				}
+			}
+		}
+	}
+
+	posAL.clear();
+	barsAL.clear();
+	posCH.clear();
+
+	//para o alimentador 2 sorteado
+
+	for (int i = 1; i < linha_dados; i++)
+	{
+		if (ac.adjacente_chaves[sort_AL2][1][i] != 0)
+		{
+			barsAL.push_back(ac.adjacente_chaves[sort_AL2][1][i]); //pega as barras do alimentador
+		}
+	}
+
+	for (int i = 0; i < barsAL.size(); i++)
+	{
+		for (int j = 1; j < linha_dados; j++)
+		{
+			if (ps.nof[j] == barsAL[i])
+			{
+				posAL.push_back(j); //pega a posicao das barras
+			}
+		}
+	}
+
+	numerochaves = 0;
+	for (int i = 1; i < linha_dados; i++)
+	{
+		if (ac.chf[sort_AL2][i] != 0)
+		{
+			numerochaves++; //quantidade de chaves
+			posCH.push_back(ac.posicaochaves[sort_AL2][i]); //guarda a posicao das chaves
+		}
+	}
+
+	//sorteando chaves
+	sort_ch = rand() % numerochaves + 1;
+
+	while (posCH.size() > sort_ch)
+	{
+		random_shuffle(posCH.begin(), posCH.end()); //mistura elementos 
+		posCH.erase(posCH.end()); //apaga ultimo elemento
+	}
+
+	for (int i = 1; i < linha_dados; i++)
+	{
+		if (ac.posicaochaves[sort_AL2][i] == 0) { continue; }
+
+		aux = false;
+		for (int j = 0; j < posCH.size(); j++)
+		{
+			if (ac.posicaochaves[sort_AL2][i] == posCH[j])
+			{
+				sort_ch = rand() % posAL.size() + 1;
+
+				for (int k = 1; k < linha_dados; k++)
+				{
+					if (ac.posicaochaves[sort_AL2][k] == 0) { continue; }
+
+					else if (ac.posicaochaves[sort_AL2][k] == posAL[sort_ch]) { aux = true; }
+				}
+
+				if (aux == false)
+				{
+					ac.posicaochaves[sort_AL2][i] = posAL[sort_ch]; //realocou a chave
+					ac.chi[sort_AL2][i] = ps.noi[posAL[sort_ch]];
+					ac.chf[sort_AL2][i] = ps.nof[posAL[sort_ch]];
+
+					ac.secoes_alimentador(); //refez secoes
+
+					//selecionar chaves mudadas
+					contadorchaves = 0;
+					for (int l = 1; l < linha_dados; l++)
+					{
+						for (int m = 1; m < linha_dados; m++)
+						{
+							if (ac.chi[l][m] != 0 && ac.chf[l][m] != 0)
+							{
+								contadorchaves++;
+
+								if (ac.posicaochaves[l][m] == ac.posicaochaves[sort_AL2][i])
+								{
+									mudarchaves.push_back(contadorchaves);
+								}
+							}
+						}
+					}
+
+				}
+			}
+		}
+	}
+
+	posAL.clear();
+	barsAL.clear();
+	posCH.clear();
+	
+	
+	//fazer VND
+	solution = gvns.VND(mudarchaves);
+
+	mudarchaves.clear();
+
+	return(solution);
 	
 }
 
@@ -2106,6 +2349,14 @@ rodar_dnv:
 	//variaveis a serem analisadas
 	gvns.current_solution = 0.0;
 	gvns.incumbent_solution = 0.0;
+
+	gvns.q_rvns1 = 0;
+	gvns.q_rvns2 = 0;
+	gvns.q_rvns3 = 0;
+	gvns.q_vnd1 = 0;
+	gvns.q_vnd2 = 0;
+
+	fxp.contadorFXP = 0;
 
 	run_alg++;
 
@@ -2179,7 +2430,7 @@ rodar_dnv:
 			if (ac.chi[i][j] != 0 && ac.chf[i][j] != 0)
 			{
 				cout << ac.chi[i][j];
-				cout << " |--| ";
+				cout << "|--|";
 				cout << ac.chf[i][j] << endl;
 			}
 		}
@@ -2197,22 +2448,24 @@ metaheuristicGVNS:
 
 	itGVNS++;
 
-	gvns.current_solution = gvns.v1_RVNS();
+	//gvns.current_solution = gvns.v1_RVNS();
 
 	if (gvns.current_solution < gvns.incumbent_solution)
 	{
 		cout << "1-RVNS" << endl;
+		gvns.q_rvns1++;
 
 		gvns.incumbent_solution = gvns.current_solution;
 		atualizacaoFO.push_back(gvns.incumbent_solution);
 		goto metaheuristicGVNS;
 	}
 
-	gvns.current_solution = gvns.v2_RVNS();
+	//gvns.current_solution = gvns.v2_RVNS();
 
 	if (gvns.current_solution < gvns.incumbent_solution)
 	{
 		cout << "2-RVNS" << endl;
+		gvns.q_rvns2++;
 
 		gvns.incumbent_solution = gvns.current_solution;
 		atualizacaoFO.push_back(gvns.incumbent_solution);
@@ -2223,7 +2476,8 @@ metaheuristicGVNS:
 
 	if (gvns.current_solution < gvns.incumbent_solution)
 	{
-		cout << "2-RVNS" << endl;
+		cout << "3-RVNS" << endl;
+		gvns.q_rvns3++;
 
 		gvns.incumbent_solution = gvns.current_solution;
 		atualizacaoFO.push_back(gvns.incumbent_solution);
@@ -2265,8 +2519,20 @@ metaheuristicGVNS:
 	cout << "Numero de iteracoes: " << itGVNS << endl;
 	cout << "\n";
 
-	cout << "----------------------------------------------------------------------" << endl;
+	cout << "Operacoes nas vizinhacas:" << endl;
+	cout << "rvns 1: " << gvns.q_rvns1 << endl;
+	cout << "rvns 2: " << gvns.q_rvns2 << endl;
+	cout << "rvns 3: " << gvns.q_rvns3 << endl;
+	cout << "vnd 1: " << gvns.q_vnd1 << endl;
+	cout << "vnd 2: " << gvns.q_vnd2 << endl;
 	cout << "\n";
+
+	//fluxo de potencia:
+	cout << "Numero de fluxo de potencia da simulacao: " << fxp.contadorFXP << endl;
+	cout << "\n";
+
+	cout << "----------------------------------------------------------------------" << endl;
+	cout << "\n\n";
 
 	//repete se nao der o numero desejado de simulacoes
 	if (run_alg < num_run_alg) { goto rodar_dnv; }
@@ -2303,8 +2569,6 @@ metaheuristicGVNS:
 
 	cout << "Convergencia na melhor solucao: " << convergencia << endl;
 	cout << "\n";
-	cout << "Total de fluxos de potencia: " << fxp.contadorFXP << endl;
-	cout << "\n";
 	cout << "Imprimindo Resultado das simulacoes:" << endl;
 
 	for (int i = 0; i < linha_dados; i++)
@@ -2313,4 +2577,6 @@ metaheuristicGVNS:
 	}
 	cout << "\n";
 	cout << "Fim" << endl;
+
+	return 0;
 }
