@@ -182,6 +182,7 @@ public:
 	int q_rvns1 = 0;
 	int q_rvns2 = 0;
 	int q_rvns3 = 0;
+	int q_rvns4 = 0;
 	int q_vnd1 = 0;
 	int q_vnd2 = 0;
 	
@@ -189,8 +190,8 @@ public:
 	void primeiraaloc();
 	float v1_RVNS(); //sortear duas chaves e aplicar VND
 	float v2_RVNS(); //escolher todas as chaves de um alimentador sorteado e aplicar VND
-	float v3_RVNS(); //sortear duas chaves quaisquer para outra posição e aplicar VND
-	float v4_RVNS(); //sortear 2 < n < numero_max_chaves_sistema e reposiciona-las para outra posição, e aplicar VND nas n chaves 
+	float v3_RVNS(); //selecionar dois alimentadores e sortear um numero de chaves para serem realocadas em posicoes aleatórias dentro do alimentador e fazer o VND em todas as chaves de cada alimentador
+	float v4_RVNS(); //sortear 2 alimentadores e manter apenas uma chave de cada alimentador na posicao original, o restante deve ser realocado em posicoes aleatorias dentro do alimentador
 	
 	float VND(vector<int>chaves);
 	float v1_VND(vector<int>chavesv1); //mover para adjacente
@@ -201,7 +202,6 @@ private:
 	void sorteiochaves(int numch, int camada[linha_dados][linha_dados], int posicao_camada[linha_dados], int alimentador); //sorteio inicial das chaves
 	
 }gvns;
-
 
 //------------------------------------------------------------
 
@@ -931,7 +931,7 @@ float AlocacaoChaves::calculo_funcao_objetivo()
 	vector<int>::iterator itr_s1;
 	vector<int>::iterator itr_s2;
 
-	bool condicaoFOR = true;
+	int contcondicao = 0;
 
 	vector <int> secao;
 	vector <int> posicao;
@@ -954,18 +954,17 @@ float AlocacaoChaves::calculo_funcao_objetivo()
 		for (int j = 1; j < linha_dados; j++)
 		{
 			//ver se vale a pena fazer o laço, se o vetor estiver zerado é só custo computacional a toa
-			condicaoFOR = false;
+			contcondicao = 0;
 
 			for (int k = 0; k < linha_dados; k++)
 			{
-				if (ac.secoes_chaves[i][j][k] != 0)
+				if (ac.secoes_chaves[i][j][k] == 0)
 				{
-					condicaoFOR = true;
-					break;
+					contcondicao++;
 				}
 			}
 
-			if (condicaoFOR == false) { continue; }
+			if (contcondicao == linha_dados) { continue; }
 
 			//////////////////////
 
@@ -1237,8 +1236,8 @@ void AlocacaoChaves::chaves_anteriores()
 	{
 		for (int j = 1; j < linha_dados; j++)
 		{
-			antchi[i][j] = chi[i][j];
-			antchf[i][j] = chf[i][j];
+			ac.antchi[i][j] = ac.chi[i][j];
+			ac.antchf[i][j] = ac.chf[i][j];
 		}
 	}
 }
@@ -1249,8 +1248,8 @@ void AlocacaoChaves::volta_chaves_anteriores()
 	{
 		for (int j = 1; j < linha_dados; j++)
 		{
-			chi[i][j] = antchi[i][j];
-			chf[i][j] = antchf[i][j];
+			ac.chi[i][j] = ac.antchi[i][j];
+			ac.chf[i][j] = ac.antchf[i][j];
 		}
 	}
 }
@@ -1357,13 +1356,12 @@ float GVNS::v1_VND(vector <int> chavesv1)
 	vector <int> pos_vizinhas;
 
 	bool repetepos = false;
+	int pos_vetorcaso_nao_melhor = 0;
 
-	vector <float> result_parcial; //resultado parcial da funcao objetivo
 	float soluc = 0.0;
 
 	vector<int>auxfunc; //vetor auxiliar das funcoes
 	vector <vector<int>> identch; //sempre tera duas posicoes:: 1)chi - 2)chf
-
 
 	// 1) localizar chaves sorteadas
 
@@ -1437,7 +1435,7 @@ float GVNS::v1_VND(vector <int> chavesv1)
 							pos_vizinhas.push_back(k);
 						}
 					}
-					
+
 				}
 			}
 
@@ -1486,8 +1484,6 @@ float GVNS::v1_VND(vector <int> chavesv1)
 
 		//3) Analisar qual o melhor vizinho
 
-		ac.chaves_anteriores(); //salva chaves anteriores
-
 		int pos1ch = 0;
 		int pos2ch = 0;
 
@@ -1506,10 +1502,12 @@ float GVNS::v1_VND(vector <int> chavesv1)
 
 		//analisar a melhor posicao - IMPORTANTE -
 		soluc = 0.0;
-		int pos_vetorcaso_nao_melhor = ac.posicaochaves[pos1ch][pos2ch];
+		pos_vetorcaso_nao_melhor = ac.posicaochaves[pos1ch][pos2ch];
 
 		for (int t = 0; t < pos_vizinhas.size(); t++)
 		{
+			ac.chaves_anteriores(); //salva chaves anteriores
+
 			//atribuir nova chave
 			ac.chi[pos1ch][pos2ch] = ps.noi[pos_vizinhas[t]];
 			ac.chf[pos1ch][pos2ch] = ps.nof[pos_vizinhas[t]];
@@ -1521,49 +1519,25 @@ float GVNS::v1_VND(vector <int> chavesv1)
 			ac.secoes_alimentador();
 
 			soluc = ac.calculo_funcao_objetivo();
-			result_parcial.push_back(soluc);
-		}
 
-		//pegar menor solucao
-
-		soluc = result_parcial[0];
-		int pos = 0;
-
-		for (int t = 0; t < result_parcial.size(); t++)
-		{
-			if (soluc > result_parcial[t])
+			//analisar caso
+			if (soluc > gvns.vnd_current)
 			{
-				soluc = result_parcial[t];
-				pos = t;
+				//volta oq estava
+				ac.volta_chaves_anteriores();
+				ac.posicaochaves[pos1ch][pos2ch] = pos_vetorcaso_nao_melhor;
+				ac.secoes_alimentador();
+			}
+			else
+			{
+				//atualiza
+				gvns.vnd_current = soluc;
 			}
 		}
 
-		// 4) comparar e trocar chave se necessario
-
-		if (soluc < gvns.vnd_current)
-		{
-			gvns.vnd_current = soluc;
-
-			ac.chi[pos1ch][pos2ch] = ps.noi[pos_vizinhas[pos]];
-			ac.chf[pos1ch][pos2ch] = ps.nof[pos_vizinhas[pos]];
-
-			ac.posicaochaves[pos1ch][pos2ch] = pos_vizinhas[pos];
-			ac.secoes_alimentador();
-
-		}
-		else
-		{
-			ac.posicaochaves[pos1ch][pos2ch] = pos_vetorcaso_nao_melhor;
-			ac.volta_chaves_anteriores();
-			ac.secoes_alimentador();
-		}
-
-
-		//por fim, limpar vetores
-		result_parcial.clear();
 		pos_vizinhas.clear();
-	}
 
+	}
 	return(gvns.vnd_current);
 }
 
@@ -1576,6 +1550,7 @@ float GVNS::v2_VND(vector <int> chavesv2)
 	vector <int> pos_vizinhas;
 
 	bool repetepos = false;
+	int pos_vetorcaso_nao_melhor = 0;
 
 	vector <float> result_parcial; //resultado parcial da funcao objetivo
 	float soluc = 0.0;
@@ -1735,14 +1710,11 @@ float GVNS::v2_VND(vector <int> chavesv2)
 					else
 					{
 						partedachave = false;
-						for (int j = 0; j < identch.size(); j++)
+						for (int j = 0; j < identch[i].size(); j++)
 						{
-							for (int z = 0; z < identch[j].size(); z++)
+							if (identch[i][j] == ps.noi[k] || identch[i][j] == ps.nof[k])
 							{
-								if (identch[j][z] == ps.noi[k] || identch[j][z] == ps.nof[k])
-								{
-									partedachave = true;
-								}
+								partedachave = true;
 							}
 						}
 
@@ -1771,14 +1743,11 @@ float GVNS::v2_VND(vector <int> chavesv2)
 					else
 					{
 						partedachave = false;
-						for (int j = 0; j < identch.size(); j++)
+						for (int j = 0; j < identch[i].size(); j++)
 						{
-							for (int z = 0; z < identch[j].size(); z++)
+							if (identch[i][j] == ps.noi[k] || identch[i][j] == ps.nof[k])
 							{
-								if (identch[j][z] == ps.noi[k] || identch[j][z] == ps.nof[k])
-								{
-									partedachave = true;
-								}
+								partedachave = true;
 							}
 						}
 
@@ -1808,14 +1777,11 @@ float GVNS::v2_VND(vector <int> chavesv2)
 					else
 					{
 						partedachave = false;
-						for (int j = 0; j < identch.size(); j++)
+						for (int j = 0; j < identch[i].size(); j++)
 						{
-							for (int z = 0; z < identch[j].size(); z++)
+							if (identch[i][j] == ps.noi[k] || identch[i][j] == ps.nof[k])
 							{
-								if (identch[j][z] == ps.noi[k] || identch[j][z] == ps.nof[k])
-								{
-									partedachave = true;
-								}
+								partedachave = true;
 							}
 						}
 
@@ -1844,14 +1810,11 @@ float GVNS::v2_VND(vector <int> chavesv2)
 					else
 					{
 						partedachave = false;
-						for (int j = 0; j < identch.size(); j++)
+						for (int j = 0; j < identch[i].size(); j++)
 						{
-							for (int z = 0; z < identch[j].size(); z++)
+							if (identch[i][j] == ps.noi[k] || identch[i][j] == ps.nof[k])
 							{
-								if (identch[j][z] == ps.noi[k] || identch[j][z] == ps.nof[k])
-								{
-									partedachave = true;
-								}
+								partedachave = true;
 							}
 						}
 
@@ -1878,8 +1841,6 @@ float GVNS::v2_VND(vector <int> chavesv2)
 
 		//3) Analisar qual o melhor vizinho
 
-		ac.chaves_anteriores(); //salva chaves anteriores
-
 		int pos1ch = 0;
 		int pos2ch = 0;
 
@@ -1898,10 +1859,12 @@ float GVNS::v2_VND(vector <int> chavesv2)
 
 		//analisar a melhor posicao - IMPORTANTE -
 		soluc = 0.0;
-		int pos_vetorcaso_nao_melhor = ac.posicaochaves[pos1ch][pos2ch];
+		pos_vetorcaso_nao_melhor = ac.posicaochaves[pos1ch][pos2ch];
 
 		for (int t = 0; t < pos_vizinhas.size(); t++)
 		{
+			ac.chaves_anteriores(); //salva chaves anteriores
+
 			//atribuir nova chave
 			ac.chi[pos1ch][pos2ch] = ps.noi[pos_vizinhas[t]];
 			ac.chf[pos1ch][pos2ch] = ps.nof[pos_vizinhas[t]];
@@ -1913,46 +1876,20 @@ float GVNS::v2_VND(vector <int> chavesv2)
 			ac.secoes_alimentador();
 
 			soluc = ac.calculo_funcao_objetivo();
-			result_parcial.push_back(soluc);
-		}
 
-		//pegar menor solucao - consequentemente a melhor
-
-		soluc = result_parcial[0];
-		int pos = 0;
-
-		for (int t = 0; t < result_parcial.size(); t++)
-		{
-			if (soluc > result_parcial[t])
+			//analisar caso
+			if (soluc > gvns.vnd_current)
 			{
-				soluc = result_parcial[t];
-				pos = t;
+				ac.volta_chaves_anteriores();
+				ac.posicaochaves[pos1ch][pos2ch] = pos_vetorcaso_nao_melhor;
+				ac.secoes_alimentador();
+			}
+			else
+			{
+				gvns.vnd_current = soluc;
 			}
 		}
 
-		// 4) comparar e trocar chave se necessario
-
-		if (soluc < gvns.vnd_current)
-		{
-			gvns.vnd_current = soluc;
-
-			ac.chi[pos1ch][pos2ch] = ps.noi[pos_vizinhas[pos]];
-			ac.chf[pos1ch][pos2ch] = ps.nof[pos_vizinhas[pos]];
-
-			ac.posicaochaves[pos1ch][pos2ch] = pos_vizinhas[pos];
-			ac.secoes_alimentador();
-
-		}
-		else
-		{
-			ac.posicaochaves[pos1ch][pos2ch] = pos_vetorcaso_nao_melhor;
-			ac.volta_chaves_anteriores();
-			ac.secoes_alimentador();
-		}
-
-
-		//por fim, limpar vetores
-		result_parcial.clear();
 		pos_vizinhas.clear();
 		auxfunc.clear();
 		identch_aux.clear();
@@ -2083,18 +2020,16 @@ float GVNS::v2_RVNS()
 
 float GVNS::v3_RVNS()
 {
-	//Descricao: selecionar dois alimentadores e sortear um numero de chaves para serem realoxadas em posicoes aleatórias dentro do alimentador
+	//Descricao: selecionar dois alimentadores e sortear um numero de chaves para serem realocadas em posicoes aleatórias dentro do alimentador e fazer o VND em todas as chaves de cada alimentador
 	
 	float solution = 0.0;
 	int sort_AL1 = 0;
 	int sort_AL2 = 0;
 	int sort_ch = 0;
 	int numerochaves = 0;
-	bool aux = false;
-	int contadorchaves = 0;
 
 	int pos_aleat = 0;
-	int incremento = 0;
+	bool cond = false;
 	
 	vector <int> posAL;
 	vector <int> barsAL;
@@ -2102,14 +2037,19 @@ float GVNS::v3_RVNS()
 	vector <int> mudarchaves;
 
 	//sortear alimentadores
+	sort_AL1 = 0;
+	sort_AL2 = 0;
 	while (sort_AL1 == sort_AL2)
 	{
 		sort_AL1 = rand() % num_AL + 1; //alimentador 1
 		sort_AL2 = rand() % num_AL + 1; //alimentador 2
 	}
 
-	//para o alimentador 1 sorteado
+	//para o alimentador sorteado
 
+novo_alimentador: //retorno para os alimentadores
+
+	//identificar barras do alimentador
 	for (int i = 1; i < linha_dados; i++)
 	{
 		if (ac.adjacente_chaves[sort_AL1][1][i] != 0)
@@ -2118,17 +2058,19 @@ float GVNS::v3_RVNS()
 		}	
 	}
 
+	//identificar posicoes possiveis de alocacao
 	for (int i = 0; i < barsAL.size(); i++)
 	{
 		for (int j = 1; j < linha_dados; j++)
 		{
-			if (ps.nof[j] == barsAL[i])
+			if (ps.nof[j] == barsAL[i] && ps.candidato_aloc[j] == 1)
 			{
 				posAL.push_back(j); //pega a posicao das barras
 			}
 		}
 	}
 
+	//contar numero de chaves e guardar posicao delas
 	numerochaves = 0;
 	for (int i = 1; i < linha_dados; i++)
 	{
@@ -2139,189 +2081,66 @@ float GVNS::v3_RVNS()
 		}
 	}
 
-	//sorteando chaves
+	//sorteando chave
+novosortv3:
 	sort_ch = rand() % numerochaves + 1;
-
-	incremento = 0;
-	while (sort_ch != 0)
-	{
-		incremento++;
-
-	newpos:
-		pos_aleat = rand() % posAL.size() + 1;
-
-		aux = false;
-
-		for (int i = 0; i < posCH.size(); i++)
-		{
-			if (posAL[pos_aleat] == posCH[i]) { aux = true; }
-			if (posAL[pos_aleat] == ac.posicaochaves[sort_AL1][i]) { aux == true; }
-		}
-		
-		if (aux == false)
-		{
-			ac.posicaochaves[sort_AL1][incremento] = posAL[pos_aleat];
-			ac.secoes_alimentador();
-			sort_ch--;
-		}
-		else
-		{
-			goto newpos;
-		}
-	}
-
-	while (posCH.size() > sort_ch)
-	{
-		random_shuffle(posCH.begin(), posCH.end()); //mistura elementos 
-		posCH.erase(posCH.end()); //apaga ultimo elemento
-	}
-
-	for (int i = 1; i < linha_dados; i++)
-	{
-		if (ac.posicaochaves[sort_AL1][i] == 0) { continue; }
-
-		aux = false;
-		for (int j = 0; j < posCH.size(); j++)
-		{
-			if (ac.posicaochaves[sort_AL1][i] == posCH[j])
-			{
-				sort_ch = rand() % posAL.size() + 1;
-
-				for (int k = 1; k < linha_dados; k++)
-				{
-					if (ac.posicaochaves[sort_AL1][k] == 0) { continue; }
-
-					else if (ac.posicaochaves[sort_AL1][k] == posAL[sort_ch]) { aux = true; }
-				}
-
-				if (aux == false)
-				{
-					ac.posicaochaves[sort_AL1][i] = posAL[sort_ch]; //realocou a chave
-					ac.chi[sort_AL1][i] = ps.noi[posAL[sort_ch]];
-					ac.chf[sort_AL1][i] = ps.nof[posAL[sort_ch]];
-
-					ac.secoes_alimentador(); //refez secoes
-
-					//selecionar chaves mudadas
-					contadorchaves = 0;
-					for (int l = 1; l < linha_dados; l++)
-					{
-						for (int m = 1; m < linha_dados; m++)
-						{
-							if (ac.chi[l][m] != 0 && ac.chf[l][m] != 0)
-							{
-								contadorchaves++;
-
-								if (ac.posicaochaves[l][m] == ac.posicaochaves[sort_AL1][i])
-								{
-									mudarchaves.push_back(contadorchaves);
-								}
-							}
-						}
-					}
-
-				}
-			}
-		}
-	}
-
-	posAL.clear();
-	barsAL.clear();
-	posCH.clear();
-
-	//para o alimentador 2 sorteado
-
-	for (int i = 1; i < linha_dados; i++)
-	{
-		if (ac.adjacente_chaves[sort_AL2][1][i] != 0)
-		{
-			barsAL.push_back(ac.adjacente_chaves[sort_AL2][1][i]); //pega as barras do alimentador
-		}
-	}
-
-	for (int i = 0; i < barsAL.size(); i++)
-	{
-		for (int j = 1; j < linha_dados; j++)
-		{
-			if (ps.nof[j] == barsAL[i])
-			{
-				posAL.push_back(j); //pega a posicao das barras
-			}
-		}
-	}
-
-	numerochaves = 0;
-	for (int i = 1; i < linha_dados; i++)
-	{
-		if (ac.chf[sort_AL2][i] != 0)
-		{
-			numerochaves++; //quantidade de chaves
-			posCH.push_back(ac.posicaochaves[sort_AL2][i]); //guarda a posicao das chaves
-		}
-	}
-
-	//sorteando chaves
-	sort_ch = rand() % numerochaves + 1;
-
-	while (posCH.size() > sort_ch)
-	{
-		random_shuffle(posCH.begin(), posCH.end()); //mistura elementos 
-		posCH.erase(posCH.end()); //apaga ultimo elemento
-	}
-
-	for (int i = 1; i < linha_dados; i++)
-	{
-		if (ac.posicaochaves[sort_AL2][i] == 0) { continue; }
-
-		aux = false;
-		for (int j = 0; j < posCH.size(); j++)
-		{
-			if (ac.posicaochaves[sort_AL2][i] == posCH[j])
-			{
-				sort_ch = rand() % posAL.size() + 1;
-
-				for (int k = 1; k < linha_dados; k++)
-				{
-					if (ac.posicaochaves[sort_AL2][k] == 0) { continue; }
-
-					else if (ac.posicaochaves[sort_AL2][k] == posAL[sort_ch]) { aux = true; }
-				}
-
-				if (aux == false)
-				{
-					ac.posicaochaves[sort_AL2][i] = posAL[sort_ch]; //realocou a chave
-					ac.chi[sort_AL2][i] = ps.noi[posAL[sort_ch]];
-					ac.chf[sort_AL2][i] = ps.nof[posAL[sort_ch]];
-
-					ac.secoes_alimentador(); //refez secoes
-
-					//selecionar chaves mudadas
-					contadorchaves = 0;
-					for (int l = 1; l < linha_dados; l++)
-					{
-						for (int m = 1; m < linha_dados; m++)
-						{
-							if (ac.chi[l][m] != 0 && ac.chf[l][m] != 0)
-							{
-								contadorchaves++;
-
-								if (ac.posicaochaves[l][m] == ac.posicaochaves[sort_AL2][i])
-								{
-									mudarchaves.push_back(contadorchaves);
-								}
-							}
-						}
-					}
-
-				}
-			}
-		}
-	}
-
-	posAL.clear();
-	barsAL.clear();
-	posCH.clear();
 	
+	//sorteando posicao aleatoria
+	pos_aleat = rand() % posAL.size();
+
+	//analisando se ja tem esta chave
+	cond = false;
+	for (int i = 0; i < posCH.size(); i++)
+	{
+		if (posCH[i] == posAL[pos_aleat])
+		{
+			cond = true;
+		}
+	}
+
+	//atribuindo chave a posicao aleatoria e selecionando todas do alimentador
+	if (cond == false)
+	{
+		ac.posicaochaves[sort_AL1][sort_ch] = posAL[pos_aleat];
+		ac.chi[sort_AL1][sort_ch] = ps.noi[posAL[pos_aleat]];
+		ac.chf[sort_AL1][sort_ch] = ps.nof[posAL[pos_aleat]];
+		ac.secoes_alimentador();
+
+		//identificando chaves do alimentador
+		numerochaves = 0;
+		for (int i = 1; i < num_AL; i++)
+		{
+			for (int j = 1; j < linha_dados; j++)
+			{
+				if (ac.chi[i][j] != 0 && ac.chf[i][j] != 0)
+				{
+					numerochaves++;
+
+					for (int k = 0; k < barsAL.size(); k++)
+					{
+						if (ac.chf[i][j] == barsAL[k])
+						{
+							mudarchaves.push_back(numerochaves);
+						}
+					}
+				}
+			}
+		}
+
+		//zerando vetores
+		posAL.clear();
+		barsAL.clear();
+		posCH.clear();
+
+		//retornar para repetir o processo para o segundo alimentador
+		sort_AL1 = sort_AL2;
+		goto novo_alimentador;
+	}
+	else
+	{
+		//ja tem esta chave no alimentador
+		goto novosortv3;
+	}
 	
 	//fazer VND
 	solution = gvns.VND(mudarchaves);
@@ -2330,6 +2149,90 @@ float GVNS::v3_RVNS()
 
 	return(solution);
 	
+}
+
+float GVNS::v4_RVNS()
+{
+	//Descricao: //sortear 2 alimentadores e manter apenas uma chave de cada alimentador na posicao original, o restante deve ser realocado em posicoes aleatorias dentro do alimentador
+	
+	int sortAL1 = 0;
+	int sortAL2 = 0;
+
+	int savechi = 0;
+	int savechf = 0;
+	int saveposch = 0;
+
+	int sortch = 0;
+	bool dnv = false;
+
+	int numberch = 0;
+	vector <int> mudach;
+
+	float solution = 0.0;
+
+	//sorteando alimentadores
+	sortAL1 = 0;
+	sortAL2 = 0;
+
+	while (sortAL1 == sortAL2)
+	{
+		sortAL1 = rand() % num_AL + 1;
+		sortAL2 = rand() % num_AL + 1;
+	}
+
+	//alimentador
+	dnv = false;
+
+repet_aliment:
+
+	//sorteando chave para ser mantida
+	sortch = rand() % ac.numch_AL[sortAL1];
+
+	saveposch = ac.posicaochaves[sortAL1][sortch];
+	savechi = ac.chi[sortAL1][sortch];
+	savechf = ac.chf[sortAL1][sortch];
+
+	ps.leitura_parametros();
+	fxp.fluxo_potencia();
+	gvns.sorteiochaves(ac.numch_AL[sortAL1], fxp.camadaAL[sortAL1], ac.posicaochaves[sortAL1], alimentadores[sortAL1]);
+
+	//conservando a chave
+	ac.posicaochaves[sortAL1][sortch] = saveposch;
+	ac.chi[sortAL1][sortch] = savechi;
+	ac.chf[sortAL1][sortch] = savechf;
+	ac.secoes_alimentador();
+
+	//salvando as chaves para o vnd
+	numberch = 0;
+	for (int i = 1; i < num_AL; i++)
+	{
+		for (int j = 1; j < linha_dados; j++)
+		{
+			if (ac.chf[i][j] != 0 && ac.chi[i][j] != 0)
+			{
+				numberch++;
+				if (i == sortAL1)
+				{
+					mudach.push_back(numberch);
+				}
+			}
+		}
+	}
+
+	//refazendo para o outro alimentador
+	if (dnv == false)
+	{
+		dnv = true;
+		sortAL1 = sortAL2;
+		goto repet_aliment;
+	}
+
+	solution = gvns.VND(mudach);
+
+	mudach.clear();
+
+	return(solution);
+
 }
 
 //############################################################################################
@@ -2353,6 +2256,7 @@ rodar_dnv:
 	gvns.q_rvns1 = 0;
 	gvns.q_rvns2 = 0;
 	gvns.q_rvns3 = 0;
+	gvns.q_rvns4 = 0;
 	gvns.q_vnd1 = 0;
 	gvns.q_vnd2 = 0;
 
@@ -2472,12 +2376,24 @@ metaheuristicGVNS:
 		goto metaheuristicGVNS;
 	}
 	
-	gvns.current_solution = gvns.v3_RVNS();
+	//gvns.current_solution = gvns.v3_RVNS();
 
 	if (gvns.current_solution < gvns.incumbent_solution)
 	{
 		cout << "3-RVNS" << endl;
 		gvns.q_rvns3++;
+
+		gvns.incumbent_solution = gvns.current_solution;
+		atualizacaoFO.push_back(gvns.incumbent_solution);
+		goto metaheuristicGVNS;
+	}
+
+	gvns.current_solution = gvns.v4_RVNS();
+
+	if (gvns.current_solution < gvns.incumbent_solution)
+	{
+		cout << "4-RVNS" << endl;
+		gvns.q_rvns4++;
 
 		gvns.incumbent_solution = gvns.current_solution;
 		atualizacaoFO.push_back(gvns.incumbent_solution);
@@ -2523,6 +2439,7 @@ metaheuristicGVNS:
 	cout << "rvns 1: " << gvns.q_rvns1 << endl;
 	cout << "rvns 2: " << gvns.q_rvns2 << endl;
 	cout << "rvns 3: " << gvns.q_rvns3 << endl;
+	cout << "rvns 4: " << gvns.q_rvns4 << endl;
 	cout << "vnd 1: " << gvns.q_vnd1 << endl;
 	cout << "vnd 2: " << gvns.q_vnd2 << endl;
 	cout << "\n";
