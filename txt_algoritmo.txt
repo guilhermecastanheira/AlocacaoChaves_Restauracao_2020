@@ -191,7 +191,7 @@ public:
 	float v1_RVNS(); //sortear duas chaves e aplicar VND
 	float v2_RVNS(); //escolher todas as chaves de um alimentador sorteado e aplicar VND
 	float v3_RVNS(); //selecionar dois alimentadores e sortear um numero de chaves para serem realocadas em posicoes aleatórias dentro do alimentador e fazer o VND em todas as chaves de cada alimentador
-	float v4_RVNS(); //sortear 2 alimentadores e manter apenas uma chave de cada alimentador na posicao original, o restante deve ser realocado em posicoes aleatorias dentro do alimentador
+	float v4_RVNS(); //selecionar todos os alimentadores e manter apenas uma chave de cada alimentador na posicao original, o restante deve ser realocado em posicoes aleatorias dentro do alimentador
 	
 	float VND(vector<int>chaves);
 	float v1_VND(vector<int>chavesv1); //mover para adjacente
@@ -2020,7 +2020,7 @@ float GVNS::v2_RVNS()
 
 float GVNS::v3_RVNS()
 {
-	//Descricao: selecionar dois alimentadores e sortear um numero de chaves para serem realocadas em posicoes aleatórias dentro do alimentador e fazer o VND em todas as chaves de cada alimentador
+	//Descricao: selecionar dois alimentadores e sortear uma chave para serem realocadas em posicoes aleatórias dentro do alimentador e fazer o VND em todas as chaves de cada alimentador
 	
 	float solution = 0.0;
 	int sort_AL1 = 0;
@@ -2153,11 +2153,8 @@ novosortv3:
 
 float GVNS::v4_RVNS()
 {
-	//Descricao: //sortear 2 alimentadores e manter apenas uma chave de cada alimentador na posicao original, o restante deve ser realocado em posicoes aleatorias dentro do alimentador
+	//Descricao: seleciona todos os alimentadores e manter apenas uma chave de cada alimentador na posicao original, o restante deve ser realocado em posicoes aleatorias dentro do alimentador
 	
-	int sortAL1 = 0;
-	int sortAL2 = 0;
-
 	int savechi = 0;
 	int savechf = 0;
 	int saveposch = 0;
@@ -2170,61 +2167,50 @@ float GVNS::v4_RVNS()
 
 	float solution = 0.0;
 
-	//sorteando alimentadores
-	sortAL1 = 0;
-	sortAL2 = 0;
-
-	while (sortAL1 == sortAL2)
+	for (int k = 1; k < num_AL; k++)
 	{
-		sortAL1 = rand() % num_AL + 1;
-		sortAL2 = rand() % num_AL + 1;
-	}
+		//sorteando chave para ser mantida
+		sortch = rand() % ac.numch_AL[k] + 1;
 
-	//alimentador
-	dnv = false;
+		saveposch = ac.posicaochaves[k][sortch];
+		savechi = ac.chi[k][sortch];
+		savechf = ac.chf[k][sortch];
 
-repet_aliment:
+		ps.leitura_parametros();
+		fxp.fluxo_potencia();
+		gvns.sorteiochaves(ac.numch_AL[k], fxp.camadaAL[k], ac.posicaochaves[k], alimentadores[k]);
 
-	//sorteando chave para ser mantida
-	sortch = rand() % ac.numch_AL[sortAL1];
-
-	saveposch = ac.posicaochaves[sortAL1][sortch];
-	savechi = ac.chi[sortAL1][sortch];
-	savechf = ac.chf[sortAL1][sortch];
-
-	ps.leitura_parametros();
-	fxp.fluxo_potencia();
-	gvns.sorteiochaves(ac.numch_AL[sortAL1], fxp.camadaAL[sortAL1], ac.posicaochaves[sortAL1], alimentadores[sortAL1]);
-
-	//conservando a chave
-	ac.posicaochaves[sortAL1][sortch] = saveposch;
-	ac.chi[sortAL1][sortch] = savechi;
-	ac.chf[sortAL1][sortch] = savechf;
-	ac.secoes_alimentador();
-
-	//salvando as chaves para o vnd
-	numberch = 0;
-	for (int i = 1; i < num_AL; i++)
-	{
-		for (int j = 1; j < linha_dados; j++)
+		for (int i = 1; i < num_AL; i++)
 		{
-			if (ac.chf[i][j] != 0 && ac.chi[i][j] != 0)
+			for (int j = 1; j < linha_dados; j++)
 			{
-				numberch++;
-				if (i == sortAL1)
+				ac.chi[i][j] = ps.noi[ac.posicaochaves[i][j]];
+				ac.chf[i][j] = ps.nof[ac.posicaochaves[i][j]];
+			}
+		}
+
+		//conservando a chave
+		ac.posicaochaves[k][sortch] = saveposch;
+		ac.chi[k][sortch] = savechi;
+		ac.chf[k][sortch] = savechf;
+		ac.secoes_alimentador();
+
+		//salvando as chaves para o vnd
+		numberch = 0;
+		for (int i = 1; i < num_AL; i++)
+		{
+			for (int j = 1; j < linha_dados; j++)
+			{
+				if (ac.chf[i][j] != 0 && ac.chi[i][j] != 0)
 				{
-					mudach.push_back(numberch);
+					numberch++;
+					if (i == k)
+					{
+						mudach.push_back(numberch);
+					}
 				}
 			}
 		}
-	}
-
-	//refazendo para o outro alimentador
-	if (dnv == false)
-	{
-		dnv = true;
-		sortAL1 = sortAL2;
-		goto repet_aliment;
 	}
 
 	solution = gvns.VND(mudach);
@@ -2352,7 +2338,7 @@ metaheuristicGVNS:
 
 	itGVNS++;
 
-	//gvns.current_solution = gvns.v1_RVNS();
+	gvns.current_solution = gvns.v1_RVNS();
 
 	if (gvns.current_solution < gvns.incumbent_solution)
 	{
@@ -2364,7 +2350,7 @@ metaheuristicGVNS:
 		goto metaheuristicGVNS;
 	}
 
-	//gvns.current_solution = gvns.v2_RVNS();
+	gvns.current_solution = gvns.v2_RVNS();
 
 	if (gvns.current_solution < gvns.incumbent_solution)
 	{
@@ -2376,7 +2362,7 @@ metaheuristicGVNS:
 		goto metaheuristicGVNS;
 	}
 	
-	//gvns.current_solution = gvns.v3_RVNS();
+	gvns.current_solution = gvns.v3_RVNS();
 
 	if (gvns.current_solution < gvns.incumbent_solution)
 	{
@@ -2448,7 +2434,7 @@ metaheuristicGVNS:
 	cout << "Numero de fluxo de potencia da simulacao: " << fxp.contadorFXP << endl;
 	cout << "\n";
 
-	cout << "----------------------------------------------------------------------" << endl;
+	cout << "------------------------------------------------------------------------------------------------------------------" << endl;
 	cout << "\n\n";
 
 	//repete se nao der o numero desejado de simulacoes
@@ -2492,6 +2478,9 @@ metaheuristicGVNS:
 	{
 		cout << estatisticaFO[i] << " ";
 	}
+
+	estatisticaFO.clear();
+
 	cout << "\n";
 	cout << "Fim" << endl;
 
