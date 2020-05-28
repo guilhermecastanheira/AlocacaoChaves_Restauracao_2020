@@ -155,7 +155,7 @@ public:
 	tuple <int, float> contagem_criterio(int camada[linha_dados][linha_dados]); //criterio para a contagem de quantas chaves alocar em cada alimentador do sistema teste
 	void adjacentes(int posicao[linha_dados], int adj[linha_dados][linha_dados], int alimentador); //calcula os adjacentes das chaves e da secao do alimentador
 	float FO(float potencia_secao, float comprimeto_secao, float ens_isolacao);
-	float energia_suprida(float potencia_al_original, int AL);
+	float energia_suprida(int AL, int SEC_al);
 
 }ac;
 
@@ -828,19 +828,20 @@ void AlocacaoChaves::secoes_alimentador()
 	}
 }
 
-float AlocacaoChaves::energia_suprida(float potencia_al_original, int AL)
+float AlocacaoChaves::energia_suprida(int AL, int SEC_al)
 {
 	bool analise;
 	float energia_sup = 0.0;
 	complex <float> capacidadeSE;
-	float energia_n_sup = 0.0;
-	float sum_pot = 0.0;
 
-	fxp.fluxo_potencia();
+	
 
 	// ANALISANDO FLUXO DE POTENCIA:
+	
+	//faz o fluxo de potencia para a situação do remanejamento
+	fxp.fluxo_potencia();
 
-	analise = true; //verdadeiro se atende as condiçoes, falso caso contrario
+	analise = true; //verdadeiro se atende as condiçoes, falso caso contrario - assume-se inicialmente
 
 	// 1. Níveis de tensao devem estar acima de 0.93pu
 	for (int y = 1; y < linha_dados; y++)
@@ -848,6 +849,7 @@ float AlocacaoChaves::energia_suprida(float potencia_al_original, int AL)
 		if (abs(fxp.tensao_pu[y]) < estado_restaurativo_pu && abs(fxp.tensao_pu[y]) != 0)
 		{
 			analise = false;
+			break;
 		}
 	}
 
@@ -865,7 +867,6 @@ float AlocacaoChaves::energia_suprida(float potencia_al_original, int AL)
 				{
 					if (fxp.camadaAL[i][j][k] == ps.nof[t] && fxp.camadaAL[i][j][k] != 0 && ps.estado_swt[t] == 1)
 					{
-						sum_pot += ps.s_nofr[t]; //aqui é apenas um somador de potencias
 						capacidadeSE += ps.s_nof[t];
 					}
 				}
@@ -875,19 +876,43 @@ float AlocacaoChaves::energia_suprida(float potencia_al_original, int AL)
 		if (abs(capacidadeSE) > capSE[i])
 		{
 			analise = false;
+			break;
 		}
 	}
 
 	if (analise == true)
 	{
-		energia_n_sup = ps.total_ativa - sum_pot;
-		energia_sup = potencia_al_original - energia_n_sup; //energia suprida pela chave de remanejamento
+		//a energia suprida é a da secao
+		energia_sup = 0.0;
+
+		for (int i = 1; i < linha_dados; i++)
+		{
+			for (int j = 1; j < linha_dados; j++)
+			{
+				if (ps.nof[i] == ac.secoes_chaves[AL][SEC_al][j])
+				{
+					energia_sup = energia_sup + ps.s_nofr[i];
+				}
+			}
+		}
+
+		//caso: energia_sup = 0.0 --> atribuir -1.0 a essa variavel afim de zera-la depois
+		if (energia_sup == 0)
+		{
+			energia_sup = -1.0;
+		}
+		
 	}
 	else
 	{
 		energia_sup = 0.0;
 	}
 
+	//retornar ao estado inicial
+	ps.leitura_parametros();
+	fxp.fluxo_potencia();
+
+	//retornar valor a variavel
 	return(energia_sup);
 }
 
@@ -963,8 +988,6 @@ float AlocacaoChaves::calculo_funcao_objetivo()
 			if (contcondicao == 0) { continue; }
 
 			//////////////////////
-			ps.leitura_parametros();
-			fxp.fluxo_potencia();
 
 			comprimento_secao = 0.0;
 			potencia_W = 0.0;
@@ -1246,7 +1269,7 @@ float AlocacaoChaves::calculo_funcao_objetivo()
 					{
 						ps.estado_swt[coluna] = 1;
 
-						potencia_W = ac.energia_suprida(ps.potencia_al[i], gvns.analisepos);
+						potencia_W = ac.energia_suprida(i, j);
 
 						ps.estado_swt[coluna] = 0;
 
@@ -1254,6 +1277,11 @@ float AlocacaoChaves::calculo_funcao_objetivo()
 						{
 							break;
 						}
+					}
+
+					if (potencia_W < 0.0)
+					{
+						potencia_W = 0.0; //do desvio da funcao energia_suprida
 					}
 
 					ens = ens - potencia_W;
@@ -1613,7 +1641,6 @@ float GVNS::v1_VND(vector <int> chavesv1)
 			{
 				//atualiza
 				solucao = soluc;
-				break;
 			}
 		}
 
@@ -1974,7 +2001,6 @@ float GVNS::v2_VND(vector <int> chavesv2)
 			else
 			{
 				solution = soluc;
-				break;
 			}
 		}
 
@@ -1996,31 +2022,42 @@ float GVNS::VND(vector <int> chaves)
 	gvns.vnd_incumbent = gvns.incumbent_solution;
 	gvns.vnd_current = gvns.vnd_incumbent;
 
-inicioVND:
+	vector<int>vetaux;
 
-	gvns.vnd_current = gvns.v1_VND(chaves);
+	//for (int i = 0; i < chaves.size(); i++)
+	//{
+	
+		//vetaux.push_back(chaves[i]);
 
-	if (gvns.vnd_current < gvns.vnd_incumbent)
-	{
-		gvns.vnd_incumbent = gvns.vnd_current;
-		gvns.q_vnd1++;
+	inicioVND:
 
-		cout << "_ 1-VND: " << gvns.vnd_incumbent << endl;
+		gvns.vnd_current = gvns.v1_VND(chaves);
 
-		goto inicioVND;
-	}
+		if (gvns.vnd_current < gvns.vnd_incumbent)
+		{
+			gvns.vnd_incumbent = gvns.vnd_current;
+			gvns.q_vnd1++;
 
-	gvns.vnd_current = gvns.v2_VND(chaves);
+			cout << "_ 1-VND: " << gvns.vnd_incumbent << endl;
 
-	if (gvns.vnd_current < gvns.vnd_incumbent)
-	{
-		gvns.vnd_incumbent = gvns.vnd_current;
-		gvns.q_vnd2++;
+			goto inicioVND;
+		}
 
-		cout << "_ 2-VND: " << gvns.vnd_incumbent << endl;
+		gvns.vnd_current = gvns.v2_VND(chaves);
 
-		goto inicioVND;
-	}
+		if (gvns.vnd_current < gvns.vnd_incumbent)
+		{
+			gvns.vnd_incumbent = gvns.vnd_current;
+			gvns.q_vnd2++;
+
+			cout << "_ 2-VND: " << gvns.vnd_incumbent << endl;
+
+			goto inicioVND;
+		}
+
+		//vetaux.clear();
+	//}
+
 
 	chaves.clear();
 
@@ -2315,7 +2352,7 @@ float GVNS::v4_RVNS()
 
 		ps.leitura_parametros();
 		fxp.fluxo_potencia();
-		gvns.sorteiochaves(ac.numch_AL[k], fxp.camadaAL[k], ac.posicaochaves[k], alimentadores[k]);
+		sorteiochaves(ac.numch_AL[k], fxp.camadaAL[k], ac.posicaochaves[k], alimentadores[k]);
 
 		for (int i = 1; i < num_AL; i++)
 		{
@@ -2375,7 +2412,7 @@ float GVNS::v4_RVNS()
 
 int main()
 {
-	//srand(static_cast <unsigned int> (time(NULL)));	//faz a aleatoriedade com base no relogio
+	srand(static_cast <unsigned int> (time(NULL)));	//faz a aleatoriedade com base no relogio
 
 	int itGVNS = 0;
 
@@ -2463,9 +2500,11 @@ int main()
 
 	cout << "$ Sol. Inicial: " << gvns.incumbent_solution << endl;
 
-metaheuristicGVNS:
+nmgvns:
 
 	itGVNS++;
+
+metaheuristicGVNS:
 
 	cout << "# 1" << endl;
 	gvns.current_solution = gvns.v1_RVNS();
@@ -2518,6 +2557,8 @@ metaheuristicGVNS:
 
 		goto metaheuristicGVNS;
 	}
+
+	if(itGVNS < 10) { goto nmgvns; }
 
 	////////////////////////////////////////////////////////////
 	//Fim GVNS
