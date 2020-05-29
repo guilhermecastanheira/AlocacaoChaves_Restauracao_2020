@@ -8,9 +8,7 @@
 #include <cmath>
 #include <complex>
 #include <vector>
-#include <string>
 #include <algorithm>
-#include <iterator>
 #include <tuple>
 
 using namespace std;
@@ -47,7 +45,7 @@ float iref = sref / vref;
 
 //tensao inicial nos nós do sistema: vref * (valor para dar a tensao inicial)
 float pu_inicial_alimentador = 1.05;
-float tensao_inicial_nos = (vref) * pu_inicial_alimentador;
+float tensao_inicial_nos = (vref)*pu_inicial_alimentador;
 
 //critério de convergencia do fluxo de potencia
 complex <float> criterio_conv = 1 * pow(10, -5);
@@ -126,6 +124,8 @@ public:
 	void valores_nominais_tensao();
 	void fluxo_potencia();
 
+private:
+
 	void camadas(int alimentador, int camadaalimentador[linha_dados][linha_dados]);
 	void backward_sweep(int camadaAL[linha_dados][linha_dados]);
 	void forward_sweep(int alimentador, int camada[linha_dados][linha_dados]);
@@ -146,16 +146,20 @@ public:
 	int antchi[num_AL][linha_dados] = {}; //barra inicial da chave
 	int antchf[num_AL][linha_dados] = {}; //barra final da chave
 
+	float fo_al[num_AL] = {};
+
 	void chaves_anteriores();
 	void volta_chaves_anteriores();
 	void criterio_numero_de_chaves();
 	void secoes_alimentador();
-	float calculo_funcao_objetivo();
+	float calculo_funcao_objetivo(int p_AL);
+
+private:
 
 	tuple <int, float> contagem_criterio(int camada[linha_dados][linha_dados]); //criterio para a contagem de quantas chaves alocar em cada alimentador do sistema teste
 	void adjacentes(int posicao[linha_dados], int adj[linha_dados][linha_dados], int alimentador); //calcula os adjacentes das chaves e da secao do alimentador
 	float FO(float potencia_secao, float comprimeto_secao, float ens_isolacao);
-	float energia_suprida(int AL, int SEC_al);
+	float energia_suprida(int AL, int SEC_al, float potenciaAL);
 
 }ac;
 
@@ -169,31 +173,39 @@ public:
 	float vnd_current = 0.0;
 	float vnd_incumbent = 0.0;
 
-	int analisepos = 0.0;
-	float fo_al[num_AL] = {};
+	//funcoes
+	void primeiraaloc();
+	void sorteiochaves(int numch, int camada[linha_dados][linha_dados], int posicao_camada[linha_dados], int alimentador); //sorteio inicial das chaves
+	
+}gvns;
 
-	//contadores
+class RVNS : public GVNS
+{
+public:
+
 	int q_rvns1 = 0;
 	int q_rvns2 = 0;
 	int q_rvns3 = 0;
 	int q_rvns4 = 0;
+
+	float v1_RVNS();
+	float v2_RVNS();
+	float v3_RVNS();
+	float v4_RVNS();
+}rvns;
+
+class VND : public GVNS
+{
+public:
+
 	int q_vnd1 = 0;
 	int q_vnd2 = 0;
 
-	//funcoes
-	void primeiraaloc();
-	float v1_RVNS(); //sortear duas chaves e aplicar VND
-	float v2_RVNS(); //escolher todas as chaves de um alimentador sorteado e aplicar VND
-	float v3_RVNS(); //selecionar dois alimentadores e sortear um numero de chaves para serem realocadas em posicoes aleatórias dentro do alimentador e fazer o VND em todas as chaves de cada alimentador
-	float v4_RVNS(); //selecionar todos os alimentadores e manter apenas uma chave de cada alimentador na posicao original, o restante deve ser realocado em posicoes aleatorias dentro do alimentador
+	float VND_intensificacao(int ch);
+	float v1_VND(int ch1); //mover para adjacente
+	float v2_VND(int ch2); //mover para adjacente do adjacente
 
-	float VND(vector<int>chaves);
-	float v1_VND(vector<int>chavesv1); //mover para adjacente
-	float v2_VND(vector<int>chavesv2); //mover para adjacente do adjacente
-
-	void sorteiochaves(int numch, int camada[linha_dados][linha_dados], int posicao_camada[linha_dados], int alimentador); //sorteio inicial das chaves
-
-}gvns;
+}vnd;
 
 //------------------------------------------------------------
 
@@ -472,7 +484,7 @@ void FluxoPotencia::fluxo_potencia() //alterar conforme o numero de alimentadore
 		tensao_aux[i] = 0.0;
 		corrente_aux[i] = 0.0;
 		fxp.tensao_pu[i] = 0.0;
-		fxp.corrente_pu[i]  = 0.0;
+		fxp.corrente_pu[i] = 0.0;
 	}
 	//definir as camadas de fxp.camadas de cada alimentador
 
@@ -828,16 +840,16 @@ void AlocacaoChaves::secoes_alimentador()
 	}
 }
 
-float AlocacaoChaves::energia_suprida(int AL, int SEC_al)
+float AlocacaoChaves::energia_suprida(int AL, int SEC_al, float potenciaAL)
 {
 	bool analise;
 	float energia_sup = 0.0;
 	complex <float> capacidadeSE;
 
-	
+
 
 	// ANALISANDO FLUXO DE POTENCIA:
-	
+
 	//faz o fluxo de potencia para a situação do remanejamento
 	fxp.fluxo_potencia();
 
@@ -896,12 +908,7 @@ float AlocacaoChaves::energia_suprida(int AL, int SEC_al)
 			}
 		}
 
-		//caso: energia_sup = 0.0 --> atribuir -1.0 a essa variavel afim de zera-la depois
-		if (energia_sup == 0)
-		{
-			energia_sup = -1.0;
-		}
-		
+		energia_sup = potenciaAL - energia_sup;
 	}
 	else
 	{
@@ -913,7 +920,7 @@ float AlocacaoChaves::energia_suprida(int AL, int SEC_al)
 	fxp.fluxo_potencia();
 
 	//retornar valor a variavel
-	return(energia_sup);
+	return energia_sup;
 }
 
 float AlocacaoChaves::FO(float potencia_secao, float comprimento, float ens_isolacao)
@@ -937,7 +944,7 @@ float AlocacaoChaves::FO(float potencia_secao, float comprimento, float ens_isol
 	return(resultado);
 }
 
-float AlocacaoChaves::calculo_funcao_objetivo()
+float AlocacaoChaves::calculo_funcao_objetivo(int p_AL)
 {
 	float comprimento_secao = 0.0;
 	float potencia_W = 0.0;
@@ -946,8 +953,7 @@ float AlocacaoChaves::calculo_funcao_objetivo()
 	float potencia_isolacao = 0.0;
 	float ENSotima = 0.0;
 	float ens = 0.0;
-	
-	float valorFOtot = 0.0;
+	float resultado_FO = 0.0;
 
 	int contcondicao = 0;
 
@@ -962,377 +968,297 @@ float AlocacaoChaves::calculo_funcao_objetivo()
 	remanej_cargas.clear();
 
 	//deve-se analisar todas as secoes para os valores da funcao obj
+	
 	ac.secoes_alimentador();
 
-	//alimentador i
-	for (int i = 1; i < num_AL; i++)
+	valorFO = 0.0;
+		
+	ps.leitura_parametros();
+	fxp.fluxo_potencia();
+
+	//secao j do alimentador p_AL
+	for (int j = 1; j < linha_dados; j++)
 	{
-		if (gvns.analisepos != i) { continue; }
+		//ver se vale a pena fazer o laço, se o vetor estiver zerado é só custo computacional a toa
+		contcondicao = 0;
 
-		valorFO = 0.0;
-
-		//secao j
-		for (int j = 1; j < linha_dados; j++)
+		for (int k = 0; k < linha_dados; k++)
 		{
-			//ver se vale a pena fazer o laço, se o vetor estiver zerado é só custo computacional a toa
-			contcondicao = 0;
-
-			for (int k = 0; k < linha_dados; k++)
+			if (ac.secoes_chaves[p_AL][j][k] != 0)
 			{
-				if (ac.secoes_chaves[i][j][k] != 0)
+				contcondicao++;
+			}
+		}
+
+		if (contcondicao == 0) { continue; }
+
+		//////////////////////
+
+		comprimento_secao = 0.0;
+		potencia_W = 0.0;
+		potencia_isolacao = 0.0;
+		ENSotima = 0.0;
+
+		// k = barras da seção j
+
+		//analise comprimento e potencia nao suprida
+		for (int k = 1; k < linha_dados; k++)
+		{
+			//comprimento
+			for (int y = 1; y < linha_dados; y++)
+			{
+				if (ac.secoes_chaves[p_AL][j][k] == ps.nof[y])
 				{
-					contcondicao++;
+					comprimento_secao = comprimento_secao + ps.dist_no[y];
+					ENSotima = ENSotima + ps.s_nofr[y];
 				}
 			}
+		}
 
-			if (contcondicao == 0) { continue; }
-
-			//////////////////////
-
-			comprimento_secao = 0.0;
-			potencia_W = 0.0;
-			potencia_isolacao = 0.0;
-			ENSotima = 0.0;
-
-			// k = barras da seção j
-
-			//analise comprimento e potencia nao suprida
-			for (int k = 1; k < linha_dados; k++)
+		// 1) primeiro deve-se pegar toda a area do alimentador e deliga-la
+		for (int k = 1; k < linha_dados; k++)
+		{
+			for (int y = 1; y < linha_dados; y++)
 			{
-				//comprimento
-				for (int y = 1; y < linha_dados; y++)
+				if (ac.adjacente_chaves[p_AL][1][k] == ps.nof[y])
 				{
-					if (ac.secoes_chaves[i][j][k] == ps.nof[y])
-					{
-						comprimento_secao = comprimento_secao + ps.dist_no[y];
-						ENSotima = ENSotima + ps.s_nofr[y];
-					}
+					potencia_isolacao = potencia_isolacao + ps.s_nofr[y];
 				}
 			}
+		}
 
-			// 1) primeiro deve-se pegar toda a area do alimentador e deliga-la
-			for (int k = 1; k < linha_dados; k++)
+
+		// 2) agora deve-se fazer o devido chaveamento
+		// 2a) isolando secao j
+		for (int k = 1; k < linha_dados; k++)
+		{
+			for (int y = 1; y < linha_dados; y++)
 			{
-				for (int y = 1; y < linha_dados; y++)
+				if (ac.secoes_chaves[p_AL][j][k] == ps.nof[y] && ac.secoes_chaves[p_AL][j][k] != 0)
 				{
-					if (ac.adjacente_chaves[i][1][k] == ps.nof[y])
-					{
-						potencia_isolacao = potencia_isolacao + ps.s_nofr[y];
-					}
+					ps.estado_swt[y] = 0;
 				}
 			}
+		}
 
-
-			// 2) agora deve-se fazer o devido chaveamento
-			// 2a) isolando secao j
-			for (int k = 1; k < linha_dados; k++)
+		// 2b) cenario da falta
+		//zerar falha na camada
+		for (int k = 1; k < linha_dados; k++)
+		{
+			for (int y = 1; y < linha_dados; y++)
 			{
-				for (int y = 1; y < linha_dados; y++)
-				{
-					if (ac.secoes_chaves[i][j][k] == ps.nof[y] && ac.secoes_chaves[i][j][k] != 0)
-					{
-						ps.estado_swt[y] = 0;
-					}
-				}
-			}
-
-			/*
-			// 2b) definindo chaves para remanejamento
-			posicao.clear();
-			remanej_cargas.clear();
-			bool adiciona_vetpos = true;
-
-			for (int k = 1; k < linha_dados; k++)
-			{
-				if (k <= j) { continue; }
-
-				for (int t = 0; t < linha_dados; t++)
-				{
-					if (ac.adjacente_chaves[i][k][t] == 0) { continue; }
-
-					for (int n = 1; n < linha_dados; n++)
-					{
-						if (ps.nof[n] == ac.adjacente_chaves[i][k][t] && ps.candidato_aloc[n] == 0 && ps.estado_swt[n] == 0 && ps.noi[n] != alimentadores[i] && ps.nof[n] != alimentadores[i])
-						{
-							posicao.push_back(n);
-						}
-
-						else if (ps.noi[n] == ac.adjacente_chaves[i][k][t] && ps.candidato_aloc[n] == 0 && ps.estado_swt[n] == 0 && ps.noi[n] != alimentadores[i] && ps.nof[n] != alimentadores[i])
-						{
-							posicao.push_back(n);
-						}
-						
-					}
-				}
-
-				if (posicao.size() != 0)
-				{
-					if (remanej_cargas.size() == 0)
-					{
-						//se estiver vazio, adiciona o que tiver encontrado
-						remanej_cargas.push_back(posicao);
-						posicao.clear();
-					}
-					else
-					{
-						//caso nao tiver tamanho nulo, analisar se ja tem esta opcao - se sim, nao adicciona - se não, adiciona em outra coluna
-						adiciona_vetpos = true;
-						for (int m = 0; m < remanej_cargas.size(); m++)
-						{
-							for (int v = 0; v < remanej_cargas[m].size(); v++)
-							{
-								for (int z = 0; z < posicao.size(); z++)
-								{
-									if(remanej_cargas[m][v] == posicao[z])
-									{
-										adiciona_vetpos = false; //ja tem esta posicao, nao add
-									}
-								}
-							}
-						}
-
-						if (adiciona_vetpos == true)
-						{
-							//adiciona
-							remanej_cargas.push_back(posicao);
-							posicao.clear();
-						}
-						else
-						{
-							posicao.clear();
-						}
-
-					}
-
-				}
-			}
-			
-			*/
-			
-			// 2b) cenario da falta
-
-			//zerar falha na camada
-			for (int k = 1; k < linha_dados; k++)
-			{
-				for (int y = 1; y < linha_dados; y++)
-				{
-					for (int t = 1; t < linha_dados; t++)
-					{
-						if (fxp.camadaAL[i][k][y] == ac.secoes_chaves[i][j][t])
-						{
-							fxp.camadaAL[i][k][y] = 0;
-						}
-					}
-				}
-			}
-
-			bool inicio;
-			int cont_nao0;
-
-			inicio = false;
-
-			for (int k = 1; k < linha_dados; k++)
-			{
-				cont_nao0 = 0;
-
-				for (int y = 1; y < linha_dados; y++)
-				{
-					if (fxp.camadaAL[i][k][y] != 0)
-					{
-						secao.push_back(fxp.camadaAL[i][k][y]);
-						cont_nao0++;
-					}
-				}
-
-				if (cont_nao0 == 0)
-				{
-					secao.clear();
-					inicio = true;
-				}
-				else if (inicio == true && secao.size() != 0)
-				{
-					for (int m = 1; m < linha_dados; m++)
-					{
-						for (int n = 1; n < linha_dados; n++)
-						{
-							for (int t = 0; t < secao.size(); t++)
-							{
-								if (secao[t] == ac.secoes_chaves[i][m][n])
-								{
-									posicao.push_back(m);
-								}
-							}
-						}
-					}
-
-					secao.clear();
-				}
-				else
-				{
-					secao.clear();
-				}
-			}
-
-			//eliminar elementos iguais no vetor
-			for (int k = 0; k < posicao.size(); k++)
-			{
-				for (int t = 0; t < posicao.size(); t++)
-				{
-					if (t != k && posicao[k] == posicao[t])
-					{
-						posicao[t] = 0;
-					}
-				}
-			}
-
-			//analisando o remanejamento:
-			secao.clear();
-
-			for (int k = 0; k < posicao.size(); k++)
-			{
-				if (posicao[k] == 0) { continue; }
-
 				for (int t = 1; t < linha_dados; t++)
 				{
-					if (ac.adjacente_chaves[i][posicao[k]][t] != 0)
+					if (fxp.camadaAL[p_AL][k][y] == ac.secoes_chaves[p_AL][j][t])
 					{
-						secao.push_back(ac.adjacente_chaves[i][posicao[k]][t]);
+						fxp.camadaAL[p_AL][k][y] = 0;
 					}
 				}
+			}
+		}
 
-				//verificar se esta contido na camada
-				bool contbar;
+		bool inicio;
+		int cont_nao0;
 
-				contbar = false;
+		inicio = false;
 
-				for (int g = 0; g < analise_remanejamento.size(); g++)
+		for (int k = 1; k < linha_dados; k++)
+		{
+			cont_nao0 = 0;
+
+			for (int y = 1; y < linha_dados; y++)
+			{
+				if (fxp.camadaAL[p_AL][k][y] != 0)
 				{
-					for (int h = 0; h < analise_remanejamento[g].size(); h++)
+					secao.push_back(fxp.camadaAL[p_AL][k][y]);
+					cont_nao0++;
+				}
+			}
+
+			if (cont_nao0 == 0)
+			{
+				secao.clear();
+				inicio = true;
+			}
+			else if (inicio == true && secao.size() != 0)
+			{
+				for (int m = 1; m < linha_dados; m++)
+				{
+					for (int n = 1; n < linha_dados; n++)
 					{
 						for (int t = 0; t < secao.size(); t++)
 						{
-							if (analise_remanejamento[g][h] == secao[t]) { contbar = true; }
+							if (secao[t] == ac.secoes_chaves[p_AL][m][n])
+							{
+								posicao.push_back(m);
+							}
 						}
 					}
 				}
 
-				if (contbar == false)
-				{
-					analise_remanejamento.push_back(secao);
-					secao.clear();
-				}
-				else
-				{
-					secao.clear();
-				}
-
-
-			}
-
-			//pegando posições
-			posicao.clear();
-
-			for (int k = 0; k < analise_remanejamento.size(); k++)
-			{
-				for (int t = 0; t < analise_remanejamento[k].size(); t++)
-				{
-					for (int y = 1; y < linha_dados; y++)
-					{
-						if (ps.noi[y] == analise_remanejamento[k][t] && ps.candidato_aloc[y] == 0)
-						{
-							posicao.push_back(y);
-						}
-						else if (ps.nof[y] == analise_remanejamento[k][t] && ps.candidato_aloc[y] == 0)
-						{
-							posicao.push_back(y);
-						}
-					}
-				}
-
-				if (!posicao.empty())
-				{
-					remanej_cargas.push_back(posicao);
-					posicao.clear();
-				}
-			}
-
-			//3) Calculo da ENS pelo sistema caso ocorra falha na seção j do alimentador i
-
-			if (remanej_cargas.size() != 0)
-			{
-				ens = ps.potencia_al[i];
-
-				//somente uma opcao para remanejamento de cada vez
-				for (auto& linha : remanej_cargas)
-				{
-					for (auto& coluna : linha)
-					{
-						ps.estado_swt[coluna] = 1;
-
-						potencia_W = ac.energia_suprida(i, j);
-
-						ps.estado_swt[coluna] = 0;
-
-						if (potencia_W != 0)
-						{
-							break;
-						}
-					}
-
-					if (potencia_W < 0.0)
-					{
-						potencia_W = 0.0; //do desvio da funcao energia_suprida
-					}
-
-					ens = ens - potencia_W;
-					potencia_W = 0.0;
-				}
+				secao.clear();
 			}
 			else
 			{
-				//nao tem como fazer manobra, a ENS será os adjacentes da chave
-				ens = 0.0;
+				secao.clear();
+			}
+		}
 
-				for (int y = 1; y < linha_dados; y++)
+		//eliminar elementos iguais no vetor
+		for (int k = 0; k < posicao.size(); k++)
+		{
+			for (int t = 0; t < posicao.size(); t++)
+			{
+				if (t != k && posicao[k] == posicao[t])
 				{
-					for (int h = 1; h < linha_dados; h++)
+					posicao[t] = 0;
+				}
+			}
+		}
+
+		//analisando o remanejamento:
+		secao.clear();
+
+		for (int k = 0; k < posicao.size(); k++)
+		{
+			if (posicao[k] == 0) { continue; }
+
+			for (int t = 1; t < linha_dados; t++)
+			{
+				if (ac.adjacente_chaves[p_AL][posicao[k]][t] != 0)
+				{
+					secao.push_back(ac.adjacente_chaves[p_AL][posicao[k]][t]);
+				}
+			}
+
+			//verificar se esta contido na camada
+			bool contbar;
+
+			contbar = false;
+
+			for (int g = 0; g < analise_remanejamento.size(); g++)
+			{
+				for (int h = 0; h < analise_remanejamento[g].size(); h++)
+				{
+					for (int t = 0; t < secao.size(); t++)
 					{
-						if (ps.nof[h] == ac.adjacente_chaves[i][j][y])
-						{
-							ens = ens + ps.s_nofr[h];
-						}
+						if (analise_remanejamento[g][h] == secao[t]) { contbar = true; }
 					}
 				}
 			}
 
-			analise_remanejamento.clear();
-			remanej_cargas.clear();
-			secao.clear();
-			posicao.clear();
+			if (contbar == false)
+			{
+				analise_remanejamento.push_back(secao);
+				secao.clear();
+			}
+			else
+			{
+				secao.clear();
+			}
 
 
-			// 4) chamando a funcao objetivo
-			chamadaFO = 0.0;
-
-			chamadaFO = ac.FO(ens, comprimento_secao, potencia_isolacao);
-
-			valorFO += chamadaFO;
 		}
 
-		gvns.fo_al[i] = valorFO;
+		//pegando posições
+		posicao.clear();
+
+		for (int k = 0; k < analise_remanejamento.size(); k++)
+		{
+			for (int t = 0; t < analise_remanejamento[k].size(); t++)
+			{
+				for (int y = 1; y < linha_dados; y++)
+				{
+					if (ps.noi[y] == analise_remanejamento[k][t] && ps.candidato_aloc[y] == 0)
+					{
+						posicao.push_back(y);
+					}
+					else if (ps.nof[y] == analise_remanejamento[k][t] && ps.candidato_aloc[y] == 0)
+					{
+						posicao.push_back(y);
+					}
+				}
+			}
+
+			if (!posicao.empty())
+			{
+				remanej_cargas.push_back(posicao);
+				posicao.clear();
+			}
+		}
+
+		//3) Calculo da ENS pelo sistema caso ocorra falha na seção j do alimentador i
+
+		if (remanej_cargas.size() != 0)
+		{
+			ens = ps.potencia_al[p_AL];
+
+			//somente uma opcao para remanejamento de cada vez
+			for (int a = 0; a < remanej_cargas.size(); a++)
+			{
+				for (int b = 0; b < remanej_cargas[a].size(); b++)
+				{
+					ps.estado_swt[remanej_cargas[a][b]] = 1;
+
+					potencia_W = ac.energia_suprida(p_AL, j, ps.potencia_al[p_AL]);
+
+					ps.estado_swt[remanej_cargas[a][b]] = 0;
+
+					if (potencia_W != 0)
+					{
+						break;
+					}
+				}
+
+				ens = ens - potencia_W;
+				potencia_W = 0.0;
+			}
+		}
+		else
+		{
+			//nao tem como fazer manobra, a ENS será os adjacentes da chave
+			ens = 0.0;
+
+			for (int y = 1; y < linha_dados; y++)
+			{
+				for (int h = 1; h < linha_dados; h++)
+				{
+					if (ps.nof[h] == ac.adjacente_chaves[p_AL][j][y])
+					{
+						ens = ens + ps.s_nofr[h];
+					}
+				}
+			}
+		}
+
+		analise_remanejamento.clear();
+		remanej_cargas.clear();
+		secao.clear();
+		posicao.clear();
+
+
+		// 4) chamando a funcao objetivo
+		chamadaFO = 0.0;
+
+		chamadaFO = ac.FO(ens, comprimento_secao, potencia_isolacao);
+
+		valorFO += chamadaFO;
 	}
 
-	//soma
-	valorFOtot = 0.0;
-	for (int r = 1; r < num_AL; r++)
+	fo_al[p_AL] = valorFO;
+
+	//calculo F0
+	resultado_FO = 0.0;
+	for (int i = 1; i < linha_dados; i++)
 	{
-		valorFOtot = valorFOtot + gvns.fo_al[r];
+		resultado_FO += fo_al[i];
 	}
+	
 
 	//imprime valor caso quiser
-	//cout << "FO: " << valorFOtot << endl;
+	//cout << "FO: " << resultado_FO << endl;
 
-	return(valorFOtot);
+	return resultado_FO;
 }
 
 void AlocacaoChaves::chaves_anteriores()
@@ -1452,7 +1378,7 @@ void GVNS::primeiraaloc() //alterar conforme o numero de alimentadores, modifica
 
 }
 
-float GVNS::v1_VND(vector <int> chavesv1)
+float VND::v1_VND(int ch1)
 {
 	//troca as chaves para o vizinho, ou seja, para o adjacente
 	//chavesv1 é o numero das chaves
@@ -1473,30 +1399,28 @@ float GVNS::v1_VND(vector <int> chavesv1)
 
 	// 1) localizar chaves sorteadas
 
-	for (int i = 0; i < chavesv1.size(); i++)
+	identf = 0;
+
+	for (int j = 1; j < num_AL; j++)
 	{
-		identf = 0;
-
-		for (int j = 1; j < num_AL; j++)
+		for (int k = 1; k < linha_dados; k++)
 		{
-			for (int k = 1; k < linha_dados; k++)
+			if (ac.chi[j][k] != 0 && ac.chf[j][k] != 0)
 			{
-				if (ac.chi[j][k] != 0 && ac.chf[j][k] != 0)
+				identf++;
+
+				if (identf == ch1)
 				{
-					identf++;
+					auxfunc.push_back(ac.chi[j][k]);
+					auxfunc.push_back(ac.chf[j][k]);
 
-					if (identf == chavesv1[i])
-					{
-						auxfunc.push_back(ac.chi[j][k]);
-						auxfunc.push_back(ac.chf[j][k]);
-
-						identch.push_back(auxfunc);
-						auxfunc.clear();
-					}
+					identch.push_back(auxfunc);
+					auxfunc.clear();
 				}
 			}
 		}
 	}
+	
 
 	//2) identificar chaves vizinhas e colocalas em um vetor e executar demais passos
 
@@ -1612,22 +1536,19 @@ float GVNS::v1_VND(vector <int> chavesv1)
 		soluc = 0.0;
 		pos_vetorcaso_nao_melhor = ac.posicaochaves[pos1ch][pos2ch];
 
-		for (int t = 0; t < pos_vizinhas.size(); t++)
+		for (int e = 0; e < pos_vizinhas.size(); e++)
 		{
 			ac.chaves_anteriores(); //salva chaves anteriores
 
 			//atribuir nova chave
-			ac.chi[pos1ch][pos2ch] = ps.noi[pos_vizinhas[t]];
-			ac.chf[pos1ch][pos2ch] = ps.nof[pos_vizinhas[t]];
+			ac.chi[pos1ch][pos2ch] = ps.noi[pos_vizinhas[e]];
+			ac.chf[pos1ch][pos2ch] = ps.nof[pos_vizinhas[e]];
 
 			//atribuir nova posicao da chave
-			ac.posicaochaves[pos1ch][pos2ch] = pos_vizinhas[t];
+			ac.posicaochaves[pos1ch][pos2ch] = pos_vizinhas[e];
 
-			//refazer novas camadas
-			ac.secoes_alimentador();
-
-			gvns.analisepos = pos1ch;
-			soluc = ac.calculo_funcao_objetivo();
+			//calcular FO
+			soluc = ac.calculo_funcao_objetivo(pos1ch);
 
 			//analisar caso
 			if (soluc > solucao)
@@ -1635,7 +1556,6 @@ float GVNS::v1_VND(vector <int> chavesv1)
 				//volta oq estava
 				ac.volta_chaves_anteriores();
 				ac.posicaochaves[pos1ch][pos2ch] = pos_vetorcaso_nao_melhor;
-				ac.secoes_alimentador();
 			}
 			else
 			{
@@ -1645,15 +1565,15 @@ float GVNS::v1_VND(vector <int> chavesv1)
 		}
 
 		pos_vizinhas.clear();
-
 	}
-	
-	chavesv1.clear();
-	
+
+
+	identch.clear();
+
 	return solucao;
 }
 
-float GVNS::v2_VND(vector <int> chavesv2)
+float VND::v2_VND(int ch2)
 {
 	//troca as chaves para o vizinho do vizinho, ou seja, adjacente do adjacente
 	//chavesv2 é o numero das chaves
@@ -1675,30 +1595,28 @@ float GVNS::v2_VND(vector <int> chavesv2)
 	solution = gvns.vnd_incumbent;
 	// 1) localizar chaves sorteadas
 
-	for (int i = 0; i < chavesv2.size(); i++)
+	identf = 0;
+
+	for (int j = 1; j < num_AL; j++)
 	{
-		identf = 0;
-
-		for (int j = 1; j < num_AL; j++)
+		for (int k = 1; k < linha_dados; k++)
 		{
-			for (int k = 1; k < linha_dados; k++)
+			if (ac.chi[j][k] != 0 && ac.chf[j][k] != 0)
 			{
-				if (ac.chi[j][k] != 0 && ac.chf[j][k] != 0)
+				identf++;
+
+				if (identf == ch2)
 				{
-					identf++;
+					auxfunc.push_back(ac.chi[j][k]);
+					auxfunc.push_back(ac.chf[j][k]);
 
-					if (identf == chavesv2[i])
-					{
-						auxfunc.push_back(ac.chi[j][k]);
-						auxfunc.push_back(ac.chf[j][k]);
-
-						identch.push_back(auxfunc);
-						auxfunc.clear();
-					}
+					identch.push_back(auxfunc);
+					auxfunc.clear();
 				}
 			}
 		}
 	}
+	
 
 	//2) identificar chaves vizinhas e colocalas em um vetor e executar demais passos
 
@@ -1974,29 +1892,25 @@ float GVNS::v2_VND(vector <int> chavesv2)
 		soluc = 0.0;
 		pos_vetorcaso_nao_melhor = ac.posicaochaves[pos1ch][pos2ch];
 
-		for (int t = 0; t < pos_vizinhas.size(); t++)
+		for (int e = 0; e < pos_vizinhas.size(); e++)
 		{
 			ac.chaves_anteriores(); //salva chaves anteriores
 
 			//atribuir nova chave
-			ac.chi[pos1ch][pos2ch] = ps.noi[pos_vizinhas[t]];
-			ac.chf[pos1ch][pos2ch] = ps.nof[pos_vizinhas[t]];
+			ac.chi[pos1ch][pos2ch] = ps.noi[pos_vizinhas[e]];
+			ac.chf[pos1ch][pos2ch] = ps.nof[pos_vizinhas[e]];
 
 			//atribuir nova posicao da chave
-			ac.posicaochaves[pos1ch][pos2ch] = pos_vizinhas[t];
-
-			//refazer novas camadas
-			ac.secoes_alimentador();
-
-			gvns.analisepos = pos1ch;
-			soluc = ac.calculo_funcao_objetivo();
+			ac.posicaochaves[pos1ch][pos2ch] = pos_vizinhas[e];
+			
+			//calculo FO
+			soluc = ac.calculo_funcao_objetivo(pos1ch);
 
 			//analisar caso
 			if (soluc > solution)
 			{
 				ac.volta_chaves_anteriores();
 				ac.posicaochaves[pos1ch][pos2ch] = pos_vetorcaso_nao_melhor;
-				ac.secoes_alimentador();
 			}
 			else
 			{
@@ -2009,402 +1923,105 @@ float GVNS::v2_VND(vector <int> chavesv2)
 		identch_aux.clear();
 	}
 
-	chavesv2.clear();
+
+	identch.clear();
 
 	return solution;
 
 }
 
-float GVNS::VND(vector <int> chaves)
+float VND::VND_intensificacao(int ch)
 {
 	//O VND tem o objetivo de intensificar a busca do algoritmo
-	
+
 	gvns.vnd_incumbent = gvns.incumbent_solution;
 	gvns.vnd_current = gvns.vnd_incumbent;
 
-	vector<int>vetaux;
+inicioVND:
 
-	//for (int i = 0; i < chaves.size(); i++)
-	//{
-	
-		//vetaux.push_back(chaves[i]);
+	gvns.vnd_current = v1_VND(ch);
 
-	inicioVND:
+	if (gvns.vnd_current < gvns.vnd_incumbent)
+	{
+		gvns.vnd_incumbent = gvns.vnd_current;
+		q_vnd1++;
 
-		gvns.vnd_current = gvns.v1_VND(chaves);
+		cout << "_ 1-VND: " << gvns.vnd_incumbent << endl;
 
-		if (gvns.vnd_current < gvns.vnd_incumbent)
-		{
-			gvns.vnd_incumbent = gvns.vnd_current;
-			gvns.q_vnd1++;
+		goto inicioVND;
+	}
 
-			cout << "_ 1-VND: " << gvns.vnd_incumbent << endl;
+	gvns.vnd_current = v2_VND(ch);
 
-			goto inicioVND;
-		}
+	if (gvns.vnd_current < gvns.vnd_incumbent)
+	{
+		gvns.vnd_incumbent = gvns.vnd_current;
+		q_vnd2++;
 
-		gvns.vnd_current = gvns.v2_VND(chaves);
+		cout << "_ 2-VND: " << gvns.vnd_incumbent << endl;
 
-		if (gvns.vnd_current < gvns.vnd_incumbent)
-		{
-			gvns.vnd_incumbent = gvns.vnd_current;
-			gvns.q_vnd2++;
-
-			cout << "_ 2-VND: " << gvns.vnd_incumbent << endl;
-
-			goto inicioVND;
-		}
-
-		//vetaux.clear();
-	//}
-
-
-	chaves.clear();
+		goto inicioVND;
+	}
 
 	//fim vnd
 	return gvns.vnd_incumbent;
 }
 
-float GVNS::v1_RVNS()
+float RVNS::v1_RVNS()
 {
-	//Descrição: sortear duas chaves quaisquer alocadas no sistema e aplicar o VND
-	//a principio, esta deve ser a estrutura de vizinhança mais simples dentro das estruturas de diversificação
+	//Descricao: sortear uma chave aleatoria do sistema
 
-	float solution = 0.0;
-	int sort1 = 0;
-	int sort2 = 0;
-	int aleatorio = 0;
-	vector <int> mudarch;
+	float resultado_v1 = 0.0;
+	int sort = 0;
 
-	//sortear chaves para o VND
-	while (sort1 == sort2)
-	{
-		aleatorio = rand() % (ac.numch_SIS - 1) + 1;
-		sort1 = aleatorio; //primeiro sorteio
+	sort = rand() % (ac.numch_SIS - 1) + 1;
 
-		aleatorio = rand() % (ac.numch_SIS - 1) + 1;
-		sort2 = aleatorio; //segundo sorteio
-	}
+	resultado_v1 = vnd.VND_intensificacao(sort);
 
-	mudarch.push_back(sort1);
-	mudarch.push_back(sort2);
-
-	solution = gvns.VND(mudarch);
-
-	mudarch.clear();
-
-	return solution;
-
+	return resultado_v1;
 }
 
-float GVNS::v2_RVNS()
+float RVNS::v2_RVNS()
 {
-	//Descricao: escolher todas as chaves de um alimentador sorteado e aplicar o VND em todas as chaves alocadas nele
+	//Descrição: sortear uma chave de cada alimentador
 
-	int sort_AL = 0;
-	int identificador = 0;
-	vector <int> chavesAL;
+	float resultado_v2 = 0.0;
 
-	float solution = 0.0;
-
-	// sorteando alimentador
-	sort_AL = rand() % (num_AL - 1) + 1;
-
-	//selecionando barras do alimentador
-	identificador = 0;
-	for (int i = 1; i < num_AL; i++)
-	{
-		for (int j = 1; j < linha_dados; j++)
-		{
-			if (ac.chi[i][j] != 0 && ac.chf[i][j] != 0)
-			{
-				identificador++;
-
-				if (sort_AL == i)
-				{
-					chavesAL.push_back(identificador);
-				}
-			}
-		}
-	}
-
-	//solucao
-	solution = gvns.VND(chavesAL);
-
-	chavesAL.clear();
-
-	return solution;
-}
-
-float GVNS::v3_RVNS()
-{
-	//Descricao: selecionar dois alimentadores e sortear uma chave para serem realocadas em posicoes aleatórias dentro do alimentador e fazer o VND em todas as chaves de cada alimentador
-
-	float solution = 0.0;
-	int sort_AL1 = 0;
-	int sort_AL2 = 0;
-	int sort_ch = 0;
-	int numerochaves = 0;
-
-	//copiar chaves e posicoes anteriores antes de usar aleatoriedade
-
-	int chi_s[num_AL][linha_dados] = {};
-	int chf_s[num_AL][linha_dados] = {};
-	int ch_posicoes[num_AL][linha_dados] = {};
+	int aux = 0;
+	vector<int>armaz_sort = {};
+	vector<int>mudarch = {};
 
 	for (int i = 1; i < num_AL; i++)
 	{
-		for (int j = 1; j < linha_dados; j++)
-		{
-			chi_s[i][j] = ac.chi[i][j];
-			chf_s[i][j] = ac.chf[i][j];
-			ch_posicoes[i][j] = ac.posicaochaves[i][j];
-		}
+		aux = rand() % (ac.numch_AL[i] - 1) + 1;
+		armaz_sort.push_back(aux);
 	}
 
-	//outras variaveis
-
-	int pos_aleat = 0;
-	bool cond = false;
-	bool repetir_passo = false;
-
-	vector <int> posAL;
-	vector <int> barsAL;
-	vector <int> posCH;
-	vector <int> mudarchaves;
-
-	//sortear alimentadores
-	sort_AL1 = 0;
-	sort_AL2 = 0;
-	while (sort_AL1 == sort_AL2)
+	for (int i = 0; i < armaz_sort.size(); i++)
 	{
-		sort_AL1 = rand() % (num_AL-1) + 1; //alimentador 1
-		sort_AL2 = rand() % (num_AL-1) + 1; //alimentador 2
-	}
-
-	//para o alimentador sorteado
-
-	repetir_passo = false;
-
-novo_alimentador: //retorno para os alimentadores
-
-	//identificar barras do alimentador
-	for (int i = 1; i < linha_dados; i++)
-	{
-		if (ac.adjacente_chaves[sort_AL1][1][i] != 0)
+		aux = 0;
+		for (int j = 1; j < num_AL; j++)
 		{
-			barsAL.push_back(ac.adjacente_chaves[sort_AL1][1][i]); //pega as barras do alimentador
-		}
-	}
-
-	//identificar posicoes possiveis de alocacao
-	for (int i = 0; i < barsAL.size(); i++)
-	{
-		for (int j = 1; j < linha_dados; j++)
-		{
-			if (ps.nof[j] == barsAL[i] && ps.candidato_aloc[j] == 1)
+			for (int k = 1; k < linha_dados; k++)
 			{
-				posAL.push_back(j); //pega a posicao das barras
+
 			}
 		}
 	}
 
-	//contar numero de chaves e guardar posicao delas
-	numerochaves = 0;
-	for (int i = 1; i < linha_dados; i++)
-	{
-		if (ac.chf[sort_AL1][i] != 0)
-		{
-			numerochaves++; //quantidade de chaves
-			posCH.push_back(ac.posicaochaves[sort_AL1][i]); //guarda a posicao das chaves
-		}
-	}
-
-	//sorteando chave
-novosortv3:
-	sort_ch = rand() % (numerochaves-1) + 1;
-
-	//sorteando posicao aleatoria
-	pos_aleat = rand() % (posAL.size()-1)+1;
-
-	//analisando se ja tem esta chave
-	cond = false;
-	for (int i = 0; i < posCH.size(); i++)
-	{
-		if (posCH[i] == posAL[pos_aleat])
-		{
-			cond = true;
-		}
-	}
-
-	//atribuindo chave a posicao aleatoria e selecionando todas do alimentador
-	if (cond == false)
-	{
-		ac.posicaochaves[sort_AL1][sort_ch] = posAL[pos_aleat];
-		ac.chi[sort_AL1][sort_ch] = ps.noi[posAL[pos_aleat]];
-		ac.chf[sort_AL1][sort_ch] = ps.nof[posAL[pos_aleat]];
-		ac.secoes_alimentador();
-
-		//identificando chaves do alimentador
-		numerochaves = 0;
-		for (int i = 1; i < num_AL; i++)
-		{
-			for (int j = 1; j < linha_dados; j++)
-			{
-				if (ac.chi[i][j] != 0 && ac.chf[i][j] != 0)
-				{
-					numerochaves++;
-
-					for (int k = 0; k < barsAL.size(); k++)
-					{
-						if (ac.chf[i][j] == barsAL[k])
-						{
-							mudarchaves.push_back(numerochaves);
-						}
-					}
-				}
-			}
-		}
-
-		//zerando vetores
-		posAL.clear();
-		barsAL.clear();
-		posCH.clear();
-
-		//retornar para repetir o processo para o segundo alimentador
-		if (repetir_passo == false)
-		{
-			repetir_passo = true;
-			sort_AL1 = sort_AL2;
-			goto novo_alimentador;
-		}
-	}
-	else
-	{
-		//ja tem esta chave no alimentador
-		goto novosortv3;
-	}
-
-	//fazer VND
-	solution = gvns.VND(mudarchaves);
-
-	mudarchaves.clear();
-
-	if (solution > gvns.incumbent_solution)
-	{
-		for (int i = 1; i < num_AL; i++)
-		{
-			for (int j = 1; j < linha_dados; j++)
-			{
-				ac.chi[i][j] = chi_s[i][j];
-				ac.chf[i][j] = chf_s[i][j];
-				ac.posicaochaves[i][j] = ch_posicoes[i][j];
-			}
-		}
-	}
-
-	return(solution);
-
+	
+	return resultado_v2;
 }
 
-float GVNS::v4_RVNS()
+float RVNS::v3_RVNS()
 {
-	//Descricao: seleciona todos os alimentadores e manter apenas uma chave de cada alimentador na posicao original, o restante deve ser realocado em posicoes aleatorias dentro do alimentador
+	
+	return 0;
+}
 
-	//copiar chaves e posicoes anteriores antes de usar aleatoriedade
-
-	int chi_s[num_AL][linha_dados] = {};
-	int chf_s[num_AL][linha_dados] = {};
-	int ch_posicoes[num_AL][linha_dados] = {};
-
-	for (int i = 1; i < num_AL; i++)
-	{
-		for (int j = 1; j < linha_dados; j++)
-		{
-			chi_s[i][j] = ac.chi[i][j];
-			chf_s[i][j] = ac.chf[i][j];
-			ch_posicoes[i][j] = ac.posicaochaves[i][j];
-		}
-	}
-
-	//outras variaveis 
-
-	int savechi = 0;
-	int savechf = 0;
-	int saveposch = 0;
-
-	int sortch = 0;
-	bool dnv = false;
-
-	int numberch = 0;
-	vector <int> mudach;
-
-	float solution = 0.0;
-
-	for (int k = 1; k < num_AL; k++)
-	{
-		//sorteando chave para ser mantida
-		sortch = rand() % (ac.numch_AL[k] - 1) + 1;
-
-		saveposch = ac.posicaochaves[k][sortch];
-		savechi = ac.chi[k][sortch];
-		savechf = ac.chf[k][sortch];
-
-		ps.leitura_parametros();
-		fxp.fluxo_potencia();
-		sorteiochaves(ac.numch_AL[k], fxp.camadaAL[k], ac.posicaochaves[k], alimentadores[k]);
-
-		for (int i = 1; i < num_AL; i++)
-		{
-			for (int j = 1; j < linha_dados; j++)
-			{
-				ac.chi[i][j] = ps.noi[ac.posicaochaves[i][j]];
-				ac.chf[i][j] = ps.nof[ac.posicaochaves[i][j]];
-			}
-		}
-
-		//conservando a chave
-		ac.posicaochaves[k][sortch] = saveposch;
-		ac.chi[k][sortch] = savechi;
-		ac.chf[k][sortch] = savechf;
-		ac.secoes_alimentador();
-
-		//salvando as chaves para o vnd
-		numberch = 0;
-		for (int i = 1; i < num_AL; i++)
-		{
-			for (int j = 1; j < linha_dados; j++)
-			{
-				if (ac.chf[i][j] != 0 && ac.chi[i][j] != 0)
-				{
-					numberch++;
-					if (i == k)
-					{
-						mudach.push_back(numberch);
-					}
-				}
-			}
-		}
-	}
-
-	solution = gvns.VND(mudach);
-
-	if (solution > gvns.incumbent_solution)
-	{
-		for (int i = 1; i < num_AL; i++)
-		{
-			for (int j = 1; j < linha_dados; j++)
-			{
-				ac.chi[i][j] = chi_s[i][j];
-				ac.chf[i][j] = chf_s[i][j];
-				ac.posicaochaves[i][j] = ch_posicoes[i][j];
-			}
-		}
-	}
-
-	mudach.clear();
-
-	return solution;
+float RVNS::v4_RVNS()
+{
+	return 0;
 
 }
 
@@ -2412,7 +2029,7 @@ float GVNS::v4_RVNS()
 
 int main()
 {
-	srand(static_cast <unsigned int> (time(NULL)));	//faz a aleatoriedade com base no relogio
+	//srand(static_cast <unsigned int> (time(NULL)));	//faz a aleatoriedade com base no relogio
 
 	int itGVNS = 0;
 
@@ -2420,12 +2037,12 @@ int main()
 	gvns.current_solution = 0.0;
 	gvns.incumbent_solution = 0.0;
 
-	gvns.q_rvns1 = 0;
-	gvns.q_rvns2 = 0;
-	gvns.q_rvns3 = 0;
-	gvns.q_rvns4 = 0;
-	gvns.q_vnd1 = 0;
-	gvns.q_vnd2 = 0;
+	rvns.q_rvns1 = 0;
+	rvns.q_rvns2 = 0;
+	rvns.q_rvns3 = 0;
+	rvns.q_rvns4 = 0;
+	vnd.q_vnd1 = 0;
+	vnd.q_vnd2 = 0;
 
 	//faz a leitura dos parametros do circuito
 	ps.leitura_parametros();
@@ -2486,19 +2103,18 @@ int main()
 	}
 	cout << "\n";
 
-	ps.leitura_parametros();
-	fxp.fluxo_potencia();
+
 	ac.secoes_alimentador();
 
-	for (int i = 1; i < num_AL; i++)
+	//calcular valor da FO total
+	for (int q = 1; q < linha_dados; q++)
 	{
-		gvns.analisepos = i;
-		gvns.incumbent_solution = ac.calculo_funcao_objetivo();
+		gvns.incumbent_solution = ac.calculo_funcao_objetivo(q);
 	}
 	
 	gvns.current_solution = gvns.incumbent_solution;
 
-	cout << "$ Sol. Inicial: " << gvns.incumbent_solution << endl;
+	cout << "* Solucao Inicial: " << gvns.incumbent_solution << endl;
 
 nmgvns:
 
@@ -2507,12 +2123,12 @@ nmgvns:
 metaheuristicGVNS:
 
 	cout << "# 1" << endl;
-	gvns.current_solution = gvns.v1_RVNS();
+	gvns.current_solution = rvns.v1_RVNS();
 
 	if (gvns.current_solution < gvns.incumbent_solution)
 	{
 		gvns.incumbent_solution = gvns.current_solution;
-		gvns.q_rvns1++;
+		rvns.q_rvns1++;
 
 		cout << "# 1-RVNS: " << gvns.incumbent_solution << endl;
 
@@ -2520,25 +2136,25 @@ metaheuristicGVNS:
 	}
 
 	cout << "# 2" << endl;
-	gvns.current_solution = gvns.v2_RVNS();
+	gvns.current_solution = rvns.v2_RVNS();
 
 	if (gvns.current_solution < gvns.incumbent_solution)
 	{
 		gvns.incumbent_solution = gvns.current_solution;
-		gvns.q_rvns2++;
+		rvns.q_rvns2++;
 
 		cout << "# 2-RVNS: " << gvns.incumbent_solution << endl;
-		
+
 		goto metaheuristicGVNS;
 	}
 
 	cout << "# 3" << endl;
-	gvns.current_solution = gvns.v3_RVNS();
+	gvns.current_solution = rvns.v3_RVNS();
 
 	if (gvns.current_solution < gvns.incumbent_solution)
 	{
 		gvns.incumbent_solution = gvns.current_solution;
-		gvns.q_rvns3++;
+		rvns.q_rvns3++;
 
 		cout << "# 3-RVNS: " << gvns.incumbent_solution << endl;
 
@@ -2546,19 +2162,19 @@ metaheuristicGVNS:
 	}
 
 	cout << "# 4" << endl;
-	gvns.current_solution = gvns.v4_RVNS();
+	gvns.current_solution = rvns.v4_RVNS();
 
 	if (gvns.current_solution < gvns.incumbent_solution)
 	{
 		gvns.incumbent_solution = gvns.current_solution;
-		gvns.q_rvns4++;
+		rvns.q_rvns4++;
 
 		cout << "# 4-RVNS: " << gvns.incumbent_solution << endl;
 
 		goto metaheuristicGVNS;
 	}
 
-	if(itGVNS < 10) { goto nmgvns; }
+	if (itGVNS < 10) { goto nmgvns; }
 
 	////////////////////////////////////////////////////////////
 	//Fim GVNS
@@ -2587,12 +2203,12 @@ metaheuristicGVNS:
 	cout << "\n";
 
 	cout << "Operacoes nas vizinhacas:" << endl;
-	cout << "rvns 1: " << gvns.q_rvns1 << endl;
-	cout << "rvns 2: " << gvns.q_rvns2 << endl;
-	cout << "rvns 3: " << gvns.q_rvns3 << endl;
-	cout << "rvns 4: " << gvns.q_rvns4 << endl;
-	cout << "vnd 1: " << gvns.q_vnd1 << endl;
-	cout << "vnd 2: " << gvns.q_vnd2 << endl;
+	cout << "rvns 1: " << rvns.q_rvns1 << endl;
+	cout << "rvns 2: " << rvns.q_rvns2 << endl;
+	cout << "rvns 3: " << rvns.q_rvns3 << endl;
+	cout << "rvns 4: " << rvns.q_rvns4 << endl;
+	cout << "vnd 1: " << vnd.q_vnd1 << endl;
+	cout << "vnd 2: " << vnd.q_vnd2 << endl;
 	cout << "\n";
 
 	//fluxo de potencia:
