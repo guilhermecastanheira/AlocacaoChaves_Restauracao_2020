@@ -145,6 +145,7 @@ public:
 	int chf[num_AL][linha_dados] = {}; //barra final da chave
 	int antchi[num_AL][linha_dados] = {}; //barra inicial da chave
 	int antchf[num_AL][linha_dados] = {}; //barra final da chave
+	int antpos[num_AL][linha_dados] = {}; //posicao da chave no sistema
 
 	float fo_al[num_AL] = {};
 
@@ -167,13 +168,6 @@ class GVNS
 {
 public:
 
-	//variaveis de solucao
-	float current_solution = 0.0;
-	float incumbent_solution = 0.0;
-	float vnd_current = 0.0;
-	float vnd_incumbent = 0.0;
-
-	//funcoes
 	void primeiraaloc();
 	void sorteiochaves(int numch, int camada[linha_dados][linha_dados], int posicao_camada[linha_dados], int alimentador); //sorteio inicial das chaves
 	
@@ -188,10 +182,10 @@ public:
 	int q_rvns3 = 0;
 	int q_rvns4 = 0;
 
-	float v1_RVNS();
-	float v2_RVNS();
-	float v3_RVNS();
-	float v4_RVNS();
+	float v1_RVNS(float incumbentmainv1);
+	float v2_RVNS(float incumbentmainv2);
+	float v3_RVNS(float incumbentmainv3);
+	float v4_RVNS(float incumbentmainv4);
 }rvns;
 
 class VND : public GVNS
@@ -201,9 +195,9 @@ public:
 	int q_vnd1 = 0;
 	int q_vnd2 = 0;
 
-	float VND_intensificacao(int ch);
-	float v1_VND(int ch1); //mover para adjacente
-	float v2_VND(int ch2); //mover para adjacente do adjacente
+	float VND_intensificacao(int ch, float sol_incumbent);
+	float v1_VND(int ch1, float incumbentv1); //mover para adjacente
+	float v2_VND(int ch2, float incumbentv2); //mover para adjacente do adjacente
 
 }vnd;
 
@@ -1269,6 +1263,7 @@ void AlocacaoChaves::chaves_anteriores()
 		{
 			ac.antchi[i][j] = ac.chi[i][j];
 			ac.antchf[i][j] = ac.chf[i][j];
+			ac.antpos[i][j] = ac.posicaochaves[i][j];
 		}
 	}
 }
@@ -1281,6 +1276,7 @@ void AlocacaoChaves::volta_chaves_anteriores()
 		{
 			ac.chi[i][j] = ac.antchi[i][j];
 			ac.chf[i][j] = ac.antchf[i][j];
+			ac.posicaochaves[i][j] = ac.antpos[i][j];
 		}
 	}
 }
@@ -1378,7 +1374,7 @@ void GVNS::primeiraaloc() //alterar conforme o numero de alimentadores, modifica
 
 }
 
-float VND::v1_VND(int ch1)
+float VND::v1_VND(int ch1, float incumbentv1)
 {
 	//troca as chaves para o vizinho, ou seja, para o adjacente
 	//chavesv1 é o numero das chaves
@@ -1390,12 +1386,9 @@ float VND::v1_VND(int ch1)
 	int pos_vetorcaso_nao_melhor = 0;
 
 	float soluc = 0.0;
-	float solucao = 0.0;
 
 	vector<int>auxfunc; //vetor auxiliar das funcoes
 	vector <vector<int>> identch; //sempre tera duas posicoes:: 1)chi - 2)chf
-
-	solucao = gvns.vnd_incumbent;
 
 	// 1) localizar chaves sorteadas
 
@@ -1533,7 +1526,7 @@ float VND::v1_VND(int ch1)
 		}
 
 		//analisar a melhor posicao - IMPORTANTE -
-		soluc = 0.0;
+		soluc = incumbentv1;
 		pos_vetorcaso_nao_melhor = ac.posicaochaves[pos1ch][pos2ch];
 
 		for (int e = 0; e < pos_vizinhas.size(); e++)
@@ -1551,17 +1544,11 @@ float VND::v1_VND(int ch1)
 			soluc = ac.calculo_funcao_objetivo(pos1ch);
 
 			//analisar caso
-			if (soluc > solucao)
+			if (soluc < incumbentv1)
 			{
-				//volta oq estava
-				ac.volta_chaves_anteriores();
-				ac.posicaochaves[pos1ch][pos2ch] = pos_vetorcaso_nao_melhor;
+				break;
 			}
-			else
-			{
-				//atualiza
-				solucao = soluc;
-			}
+
 		}
 
 		pos_vizinhas.clear();
@@ -1570,10 +1557,10 @@ float VND::v1_VND(int ch1)
 
 	identch.clear();
 
-	return solucao;
+	return soluc;
 }
 
-float VND::v2_VND(int ch2)
+float VND::v2_VND(int ch2, float incumbentv2)
 {
 	//troca as chaves para o vizinho do vizinho, ou seja, adjacente do adjacente
 	//chavesv2 é o numero das chaves
@@ -1586,13 +1573,11 @@ float VND::v2_VND(int ch2)
 
 	vector <float> result_parcial; //resultado parcial da funcao objetivo
 	float soluc = 0.0;
-	float solution = 0.0;
 
 	vector<int>auxfunc; //vetor auxiliar das funcoes
 	vector <vector<int>> identch; //sempre tera duas posicoes:: 1)chi - 2)chf
 	vector <vector<int>> identch_aux; //sempre tera duas posicoes:: 1)chi - 2)chf - eh o vetor auxiliar usado para encontrar as chaves
 
-	solution = gvns.vnd_incumbent;
 	// 1) localizar chaves sorteadas
 
 	identf = 0;
@@ -1889,7 +1874,7 @@ float VND::v2_VND(int ch2)
 		}
 
 		//analisar a melhor posicao - IMPORTANTE -
-		soluc = 0.0;
+		soluc = incumbentv2;
 		pos_vetorcaso_nao_melhor = ac.posicaochaves[pos1ch][pos2ch];
 
 		for (int e = 0; e < pos_vizinhas.size(); e++)
@@ -1907,15 +1892,11 @@ float VND::v2_VND(int ch2)
 			soluc = ac.calculo_funcao_objetivo(pos1ch);
 
 			//analisar caso
-			if (soluc > solution)
+			if (soluc < incumbentv2)
 			{
-				ac.volta_chaves_anteriores();
-				ac.posicaochaves[pos1ch][pos2ch] = pos_vetorcaso_nao_melhor;
+				break;
 			}
-			else
-			{
-				solution = soluc;
-			}
+
 		}
 
 		pos_vizinhas.clear();
@@ -1926,48 +1907,50 @@ float VND::v2_VND(int ch2)
 
 	identch.clear();
 
-	return solution;
+	return soluc;
 
 }
 
-float VND::VND_intensificacao(int ch)
+float VND::VND_intensificacao(int ch, float sol_incumbent)
 {
 	//O VND tem o objetivo de intensificar a busca do algoritmo
 
-	gvns.vnd_incumbent = gvns.incumbent_solution;
-	gvns.vnd_current = gvns.vnd_incumbent;
+	float vnd_incumbent = 0.0;
+	float vnd_current = 0.0;
+	
+	vnd_incumbent = sol_incumbent;
 
 inicioVND:
 
-	gvns.vnd_current = v1_VND(ch);
+	vnd_current = v1_VND(ch, vnd_incumbent);
 
-	if (gvns.vnd_current < gvns.vnd_incumbent)
+	if (vnd_current < vnd_incumbent)
 	{
-		gvns.vnd_incumbent = gvns.vnd_current;
+		vnd_incumbent = vnd_current;
 		q_vnd1++;
 
-		cout << "_ 1-VND: " << gvns.vnd_incumbent << endl;
+		cout << "_ 1-VND: " << vnd_incumbent << endl;
 
 		goto inicioVND;
 	}
 
-	gvns.vnd_current = v2_VND(ch);
+	vnd_current = v2_VND(ch, vnd_incumbent);
 
-	if (gvns.vnd_current < gvns.vnd_incumbent)
+	if (vnd_current < vnd_incumbent)
 	{
-		gvns.vnd_incumbent = gvns.vnd_current;
+		vnd_incumbent = vnd_current;
 		q_vnd2++;
 
-		cout << "_ 2-VND: " << gvns.vnd_incumbent << endl;
+		cout << "_ 2-VND: " << vnd_incumbent << endl;
 
 		goto inicioVND;
 	}
 
 	//fim vnd
-	return gvns.vnd_incumbent;
+	return vnd_incumbent;
 }
 
-float RVNS::v1_RVNS()
+float RVNS::v1_RVNS(float incumbentmainv1)
 {
 	//Descricao: sortear uma chave aleatoria do sistema
 
@@ -1976,12 +1959,12 @@ float RVNS::v1_RVNS()
 
 	sort = rand() % (ac.numch_SIS - 1) + 1;
 
-	resultado_v1 = vnd.VND_intensificacao(sort);
+	resultado_v1 = vnd.VND_intensificacao(sort, incumbentmainv1);
 
 	return resultado_v1;
 }
 
-float RVNS::v2_RVNS()
+float RVNS::v2_RVNS(float incumbentmainv2)
 {
 	//Descrição: sortear uma chave de cada alimentador
 
@@ -1994,7 +1977,7 @@ float RVNS::v2_RVNS()
 	for (int i = 1; i < num_AL; i++)
 	{
 		aux = rand() % (ac.numch_AL[i] - 1) + 1;
-		armaz_sort.push_back(aux);
+		armaz_sort.push_back(ac.posicaochaves[i][ac.numch_AL[i]]);
 	}
 
 	for (int i = 0; i < armaz_sort.size(); i++)
@@ -2004,22 +1987,42 @@ float RVNS::v2_RVNS()
 		{
 			for (int k = 1; k < linha_dados; k++)
 			{
+				if (ac.posicaochaves[j][k] != 0)
+				{
+					aux++;
 
+					if (armaz_sort[i] == ac.posicaochaves[j][k])
+					{
+						mudarch.push_back(aux);
+					}
+				}
 			}
 		}
 	}
 
-	
+	//realizar o vnd
+	for (int i = 0; i < armaz_sort.size(); i++)
+	{
+		resultado_v2 = vnd.VND_intensificacao(armaz_sort[i], incumbentmainv2);
+
+		if(resultado_v2 < incumbentmainv2)
+		{
+			break;
+		}
+	}
+
 	return resultado_v2;
 }
 
-float RVNS::v3_RVNS()
+float RVNS::v3_RVNS(float incumbentmainv3 )
 {
-	
+
+
+
 	return 0;
 }
 
-float RVNS::v4_RVNS()
+float RVNS::v4_RVNS(float incumbentmainv4)
 {
 	return 0;
 
@@ -2034,8 +2037,8 @@ int main()
 	int itGVNS = 0;
 
 	//variaveis a serem analisadas
-	gvns.current_solution = 0.0;
-	gvns.incumbent_solution = 0.0;
+	float current_solution = 0.0;
+	float incumbent_solution = 0.0;
 
 	rvns.q_rvns1 = 0;
 	rvns.q_rvns2 = 0;
@@ -2107,14 +2110,14 @@ int main()
 	ac.secoes_alimentador();
 
 	//calcular valor da FO total
-	for (int q = 1; q < linha_dados; q++)
+	for (int q = 1; q < num_AL; q++)
 	{
-		gvns.incumbent_solution = ac.calculo_funcao_objetivo(q);
+		incumbent_solution = ac.calculo_funcao_objetivo(q);
 	}
 	
-	gvns.current_solution = gvns.incumbent_solution;
+	current_solution = incumbent_solution;
 
-	cout << "* Solucao Inicial: " << gvns.incumbent_solution << endl;
+	cout << "* Solucao Inicial: " << incumbent_solution << endl;
 
 nmgvns:
 
@@ -2123,53 +2126,63 @@ nmgvns:
 metaheuristicGVNS:
 
 	cout << "# 1" << endl;
-	gvns.current_solution = rvns.v1_RVNS();
+	ac.chaves_anteriores();
+	current_solution = rvns.v1_RVNS(incumbent_solution);
 
-	if (gvns.current_solution < gvns.incumbent_solution)
+	if (current_solution < incumbent_solution)
 	{
-		gvns.incumbent_solution = gvns.current_solution;
+		incumbent_solution = current_solution;
 		rvns.q_rvns1++;
 
-		cout << "# 1-RVNS: " << gvns.incumbent_solution << endl;
+		cout << "# 1-RVNS: " << incumbent_solution << endl;
 
 		goto metaheuristicGVNS;
+	}
+	else
+	{
+		ac.volta_chaves_anteriores();
 	}
 
 	cout << "# 2" << endl;
-	gvns.current_solution = rvns.v2_RVNS();
+	ac.chaves_anteriores();
+	current_solution = rvns.v2_RVNS(incumbent_solution);
 
-	if (gvns.current_solution < gvns.incumbent_solution)
+	if (current_solution < incumbent_solution)
 	{
-		gvns.incumbent_solution = gvns.current_solution;
+		incumbent_solution = current_solution;
 		rvns.q_rvns2++;
 
-		cout << "# 2-RVNS: " << gvns.incumbent_solution << endl;
+		cout << "# 2-RVNS: " << incumbent_solution << endl;
 
 		goto metaheuristicGVNS;
 	}
+	else
+	{
+		ac.volta_chaves_anteriores();
+	}
 
 	cout << "# 3" << endl;
-	gvns.current_solution = rvns.v3_RVNS();
+	//gvns.current_solution = rvns.v3_RVNS(incumbent_solution);
 
-	if (gvns.current_solution < gvns.incumbent_solution)
+	if (current_solution < incumbent_solution)
 	{
-		gvns.incumbent_solution = gvns.current_solution;
+		incumbent_solution = current_solution;
 		rvns.q_rvns3++;
 
-		cout << "# 3-RVNS: " << gvns.incumbent_solution << endl;
+		cout << "# 3-RVNS: " << incumbent_solution << endl;
 
 		goto metaheuristicGVNS;
 	}
 
 	cout << "# 4" << endl;
-	gvns.current_solution = rvns.v4_RVNS();
+	//gvns.current_solution = rvns.v4_RVNS(incumbent_solution);
 
-	if (gvns.current_solution < gvns.incumbent_solution)
+	if (current_solution < incumbent_solution)
 	{
-		gvns.incumbent_solution = gvns.current_solution;
+		incumbent_solution = current_solution;
 		rvns.q_rvns4++;
 
-		cout << "# 4-RVNS: " << gvns.incumbent_solution << endl;
+		cout << "# 4-RVNS: " << incumbent_solution << endl;
 
 		goto metaheuristicGVNS;
 	}
@@ -2216,7 +2229,7 @@ metaheuristicGVNS:
 	cout << "\n";
 
 	//Solucao final
-	cout << "Solucao otima: " << gvns.incumbent_solution << endl;
+	cout << "Solucao otima: " << incumbent_solution << endl;
 	cout << "\n\n";
 
 	cout << "------------------------------------------------------------------------------------------------------------------" << endl;
