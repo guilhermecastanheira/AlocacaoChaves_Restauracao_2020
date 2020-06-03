@@ -178,7 +178,6 @@ public:
 	int antchfvnd[num_AL][linha_dados] = {}; //barra final da chave
 	int antposvnd[num_AL][linha_dados] = {}; //posicao da chave no sistema
 
-	float fo_alvnd[num_AL] = {};
 	float fo_al_savevnd[num_AL] = {};
 
 	void chaves_anterioresVND();
@@ -1445,7 +1444,7 @@ void GVNS::fo_anteriorVND()
 	//salva os valores da funcao objetivo anterior
 	for (int i = 1; i < num_AL; i++)
 	{
-		fo_al_savevnd[i] = fo_alvnd[i];
+		fo_al_savevnd[i] = ac.fo_al[i];
 	}
 }
 
@@ -1454,7 +1453,7 @@ void GVNS::volta_fo_anteriorVND()
 	//volta os valores para o vetor da funcao objetivo
 	for (int i = 1; i < num_AL; i++)
 	{
-		fo_alvnd[i] = fo_al_savevnd[i];
+		ac.fo_al[i] = fo_al_savevnd[i];
 	}
 }
 
@@ -1633,6 +1632,7 @@ float VND::v1_VND(int ch1, float incumbentv1)
 			if (soluc < incumbentv1)
 			{
 				gvns.fo_anteriorVND(); //salva os valores da funcao objetivo
+				gvns.chaves_anterioresVND();
 				break;
 			}
 			else
@@ -1989,6 +1989,7 @@ float VND::v2_VND(int ch2, float incumbentv2)
 			if (soluc < incumbentv2)
 			{
 				gvns.fo_anteriorVND(); //salva os novos valores da fo
+				gvns.chaves_anterioresVND();
 				break;
 			}
 			else
@@ -2018,8 +2019,6 @@ float VND::VND_intensificacao(int ch, float sol_incumbent)
 
 	float vnd_incumbent = 0.0;
 	float vnd_current = 0.0;
-	
-	gvns.chaves_anterioresVND();
 
 	vnd_incumbent = sol_incumbent;
 	vnd_current = sol_incumbent;
@@ -2061,7 +2060,7 @@ float RVNS::v1_RVNS(float incumbentmainv1)
 	float resultado_v1 = 0.0;
 	int sort = 0;
 
-	sort = rand() % (ac.numch_SIS - 1) + 1;
+	sort = rand() % ac.numch_SIS + 1;
 
 	resultado_v1 = vnd.VND_intensificacao(sort, incumbentmainv1);
 
@@ -2080,8 +2079,8 @@ float RVNS::v2_RVNS(float incumbentmainv2)
 
 	for (int i = 1; i < num_AL; i++)
 	{
-		aux = rand() % (ac.numch_AL[i] - 1) + 1;
-		armaz_sort.push_back(ac.posicaochaves[i][ac.numch_AL[i]]);
+		aux = rand() % ac.numch_AL[i] + 1;
+		armaz_sort.push_back(ac.posicaochaves[i][aux]);
 	}
 
 	for (int i = 0; i < armaz_sort.size(); i++)
@@ -2105,11 +2104,11 @@ float RVNS::v2_RVNS(float incumbentmainv2)
 	}
 
 	//realizar o vnd
-	for (int i = 0; i < armaz_sort.size(); i++)
+	for (int i = 0; i < mudarch.size(); i++)
 	{
-		resultado_v2 = vnd.VND_intensificacao(armaz_sort[i], incumbentmainv2);
+		resultado_v2 = vnd.VND_intensificacao(mudarch[i], incumbentmainv2);
 
-		if(resultado_v2 < incumbentmainv2)
+ 		if(resultado_v2 < incumbentmainv2)
 		{
 			break;
 		}
@@ -2118,16 +2117,106 @@ float RVNS::v2_RVNS(float incumbentmainv2)
 	return resultado_v2;
 }
 
-float RVNS::v3_RVNS(float incumbentmainv3 )
+float RVNS::v3_RVNS(float incumbentmainv3)
 {
+	//DESCRICAO: sortear uma chave para uma posicao aleatoria de cada alimentador e faz VND em todas as chaves até que a FO seja menor (se possível)
+
+	int sortchal = 0;
+	int sortpos = 0;
+	bool seguir = false;
+	bool ch_cond = false;
+	vector<int>posch = {};
+
+	float resultado_v3 = 0.0;
+	float v3_incumbent = 0.0;
+
+	//alocando elas para uma posicao aleatoria
+	for (int i = 1; i < num_AL; i++)
+	{
+		//posicoes possiveis de alocação
+		for (int j = 1; j < linha_dados; j++)
+		{
+			if (ac.adjacente_chaves[i][1][j] != 0)
+			{
+				for (int k = 1; k < linha_dados; k++)
+				{
+					if (ps.nof[k] == ac.adjacente_chaves[i][1][j] && ps.candidato_aloc[k] == 1)
+					{
+						posch.push_back(k);
+					}
+				}
+			}
+		}
+
+		seguir = false;
+
+		while (seguir == false)
+		{
+			ch_cond = false;
+
+			//sorteando uma posicao do vetor posch
+			sortpos = rand() % posch.size();
+
+			//verificar se existe chave neste local
+			for (int k = 1; k < linha_dados; k++)
+			{
+				if(posch[sortpos] == ac.posicaochaves[i][k] && ac.posicaochaves[i][k] != 0)
+				{
+					ch_cond = true;
+				}
+			}
+
+			if (ch_cond == false) { seguir = true; }
+			else { seguir = false; }
+		}
+
+		//sorteando uma chave
+		sortchal = rand() % (ac.numch_AL[i] - 1) + 1;
+
+		//atribuindo a chave sorteada
+		ac.posicaochaves[i][sortchal] = posch[sortpos];
+		ac.chi[i][sortchal] = ps.noi[posch[sortpos]];
+		ac.chf[i][sortchal] = ps.nof[posch[sortpos]];
+
+		posch.clear();
+	}
+
+	//apos realizar a alocacao de chaves para posicoes aleatorias, pegar uma solucao incumbent
+	for (int i = 1; i < num_AL; i++)
+	{
+		v3_incumbent = ac.calculo_funcao_objetivo(i);
+	}
+
+	//analisar se só este resultado ja satisfaz
+	if (v3_incumbent < incumbentmainv3)
+	{
+		resultado_v3 = v3_incumbent;
+	}
+	else
+	{
+		for (int i = 1;i < ac.numch_SIS; i++)
+		{
+			resultado_v3 = vnd.VND_intensificacao(i, v3_incumbent);
+
+			if (resultado_v3 < incumbentmainv3)
+			{
+				break;
+			}
+			else if (resultado_v3 < v3_incumbent)
+			{
+				v3_incumbent = resultado_v3;
+			}
+
+		}
+		
+	}
 	
-
-
-	return 0;
+	return resultado_v3;
 }
 
 float RVNS::v4_RVNS(float incumbentmainv4)
 {
+	//ver se precisa disso
 	return 0;
 
 }
@@ -2281,7 +2370,7 @@ metaheuristicGVNS:
 	ac.chaves_anteriores();
 	ac.fo_anterior();
 
-	//gvns.current_solution = rvns.v3_RVNS(incumbent_solution);
+	current_solution = rvns.v3_RVNS(incumbent_solution);
 
 	if (current_solution < incumbent_solution)
 	{
