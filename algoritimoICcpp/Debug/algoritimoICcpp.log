@@ -1,45 +1,56 @@
 ﻿  algoritimoICcpp.cpp
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(42,12): warning C4244: 'inicializando': conversão de 'double' para 'float', possível perda de dados
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(48,36): warning C4305: 'inicializando': truncamento de 'double' para 'float'
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(52,35): warning C4244: 'argumento': conversão de 'double' para 'const std::complex<float>::_Ty', possível perda de dados
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(626,18): warning C4244: '=': conversão de 'float' para 'int', possível perda de dados
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(947,41): warning C4244: '=': conversão de 'double' para 'float', possível perda de dados
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(953,87): warning C4244: '=': conversão de 'double' para 'float', possível perda de dados
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1102,25): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1121,21): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1123,22): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1135,21): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1152,22): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1154,23): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1156,24): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1179,21): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1181,22): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1210,22): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1212,23): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1505,20): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1515,24): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1536,24): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1558,24): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1579,24): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1618,21): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1716,20): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1728,24): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1749,24): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1771,24): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1792,24): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1811,21): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1827,21): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1837,25): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1848,26): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1870,25): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1881,26): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1904,25): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1915,26): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1937,25): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1948,26): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1989,21): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(2486,21): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(2682,21): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(2730,21): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(2856,21): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(44,12): warning C4244: 'inicializando': conversão de 'double' para 'float', possível perda de dados
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(54,35): warning C4244: 'argumento': conversão de 'double' para 'const std::complex<float>::_Ty', possível perda de dados
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(638,18): warning C4244: '=': conversão de 'float' para 'int', possível perda de dados
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(957,28): warning C4244: '=': conversão de 'double' para 'float', possível perda de dados
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(958,56): warning C4244: '=': conversão de 'double' para 'float', possível perda de dados
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(959,40): warning C4244: '=': conversão de 'double' para 'float', possível perda de dados
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1134,25): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1153,21): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1155,22): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1167,21): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1184,22): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1186,23): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1188,24): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1211,21): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1213,22): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1242,22): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1244,23): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1458,26): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1477,22): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1479,23): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1491,22): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1508,23): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1510,24): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1512,25): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1535,22): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1537,23): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1566,23): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1568,24): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1803,20): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1813,24): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1834,24): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1856,24): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1877,24): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(1916,21): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(2007,20): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(2019,24): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(2040,24): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(2062,24): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(2083,24): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(2102,21): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(2118,21): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(2128,25): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(2139,26): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(2161,25): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(2172,26): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(2195,25): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(2206,26): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(2228,25): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(2239,26): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(2281,21): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(2433,20): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(2491,20): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(2608,20): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\algoritimoICcpp.cpp(2646,20): warning C4018: '<': incompatibilidade de signed/unsigned
   algoritimoICcpp.vcxproj -> C:\Users\User\source\repos\AlocacaoChaves_Restauracao_2020\algoritimoICcpp\Debug\algoritimoICcpp.exe
