@@ -51,7 +51,7 @@ float pu_inicial_alimentador = 1.00;
 float tensao_inicial_nos = (vref)*pu_inicial_alimentador;
 
 //critério de convergencia do fluxo de potencia
-complex <float> criterio_conv = 1 * pow(10, -5);
+complex <float> criterio_conv = 1 * pow(10, -4);
 float epsilon = abs(criterio_conv);
 
 int max_interacao = 8;
@@ -370,9 +370,11 @@ void FluxoPotencia::camadas(int alimentador, int camadaalimentador[linha_dados][
 
 void FluxoPotencia::backward_sweep(int alimentador, int camadaAL_bs[linha_dados][linha_dados])
 {
+	int posi = 0;
+	int posf = 0;
 
-	//atribuição das correntes
-
+	/*
+	//atribuição das correntes nas barras
 	for (int i = 1; i < linha_dados; i++)
 	{
 		for (int k = 1; k < linha_dados; k++)
@@ -387,12 +389,14 @@ void FluxoPotencia::backward_sweep(int alimentador, int camadaAL_bs[linha_dados]
 		}
 	}
 
+	*/
+	
 	// somatorio das correntes nos ramos
-	for (int i = linha_dados - 1; i > 0; i--)
+	for (int i = linha_dados - 1; i > 2; i--) //o i aqui vai ate 1 pq a linha 1 é a do alimentador e i-1 sera a linha 1
 	{
 		for (int k = linha_dados - 1; k > 0; k--)
 		{
-			if (camadaAL_bs[i][k] != 0 && i != 1)
+			if (camadaAL_bs[i][k] != 0)
 			{
 				for (int r = 1; r < linha_dados; r++)
 				{
@@ -402,30 +406,61 @@ void FluxoPotencia::backward_sweep(int alimentador, int camadaAL_bs[linha_dados]
 					{
 						if (camadaAL_bs[i][k] == ps.nof[j] && camadaAL_bs[i - 1][r] == ps.noi[j] && ps.estado_swt[j] == 1)
 						{
+							posf = 0;
+							posi = 0;
+
 							for (int o = 1; o < linha_dados; o++)
 							{
-								if (ps.nof[o] == ps.noi[j] && ps.estado_swt[o] == 1)
+								if (ps.nof[o] == camadaAL_bs[i - 1][r] && ps.estado_swt[o] == 1)
 								{
 									if (ps.candidato_aloc[o] == 1 || ps.noi[o] == alimentador)
 									{
-										corrente_pu[o] = corrente_pu[o] + corrente_pu[j];
+										posf = o;
 									}
-									
 								}
 							}
+
+							for (int o = 1; o < linha_dados; o++)
+							{
+								if (ps.nof[o] == camadaAL_bs[i][k] && ps.estado_swt[o] == 1)
+								{
+									if (ps.candidato_aloc[o] == 1 || ps.noi[o] == alimentador)
+									{
+										posi = o;
+									}
+								}
+							}
+
+							fxp.corrente_pu[posf] = fxp.corrente_pu[posf] + fxp.corrente_pu[posi];
 						}
 						else if (camadaAL_bs[i][k] == ps.noi[j] && camadaAL_bs[i - 1][r] == ps.nof[j] && ps.estado_swt[j] == 1)
 						{
+							posf = 0;
+							posi = 0;
+
 							for (int o = 1; o < linha_dados; o++)
 							{
-								if (ps.nof[o] == ps.noi[j] && ps.estado_swt[o] == 1)
+								if (ps.nof[o] == camadaAL_bs[i - 1][r] && ps.estado_swt[o] == 1)
 								{
-									if (ps.noi[o] == alimentador || ps.candidato_aloc[o] == 1)
+									if (ps.candidato_aloc[o] == 1 || ps.noi[o] == alimentador)
 									{
-										corrente_pu[j] = corrente_pu[o] + corrente_pu[j];
+										posf = o;
 									}
 								}
 							}
+
+							for (int o = 1; o < linha_dados; o++)
+							{
+								if (ps.nof[o] == camadaAL_bs[i][k] && ps.estado_swt[o] == 1)
+								{
+									if (ps.candidato_aloc[o] == 1 || ps.noi[o] == alimentador)
+									{
+										posi = o;
+									}
+								}
+							}
+
+							fxp.corrente_pu[posf] = fxp.corrente_pu[posf] + fxp.corrente_pu[posi];
 						}
 					}
 				}
@@ -438,47 +473,150 @@ void FluxoPotencia::backward_sweep(int alimentador, int camadaAL_bs[linha_dados]
 
 void FluxoPotencia::forward_sweep(int alimentador, int camada[linha_dados][linha_dados])
 {
+	
 	complex <float> unit = fxp.tensao_inicial; //complexo unitario em pu para a tensao
+	int vf = 0;
+	int vi = 0;
 
 	//atribuindo a tensao para o restante dos nós
 
-	for (int i = 1; i < linha_dados; i++)
+	for (int i = 1; i < (linha_dados - 2); i++)
 	{
 		for (int j = 1; j < linha_dados; j++)
 		{
 			if (camada[i][j] == 0) { continue; } //continua se for 0 para adiantar o processo
 
-			else if (camada[i][j] == alimentador) //se for igual ao alimentador fazer este processo
+			for (int k = 1; k < linha_dados; k++)
 			{
-				for (int k = 1; k < linha_dados; k++)
+				if (camada[i + 1][k] == 0) { continue; }
+
+				for (int t = 1; t < linha_dados; t++)
 				{
-					if (ps.noi[k] == alimentador)
+					if (camada[i][j] == alimentador)
 					{
-						fxp.tensao_pu[k] = unit - (fxp.corrente_pu[k] * ps.pu_lt[k]);
-					}
-				}
-			}
-			else
-			{
-				for (int k = 1; k < linha_dados; k++)
-				{	
-					if (camada[i][j] == ps.nof[k] && ps.estado_swt[k] == 1 && ps.candidato_aloc[k] == 1)
-					{
-						//procurar o ramo que tem nó inicial igual ao nó final achado
+						vf = 0;
+						vi = 0;
+
 						for (int r = 1; r < linha_dados; r++)
 						{
-							if (ps.noi[k] == ps.nof[r] && ps.estado_swt[r] == 1 && ps.candidato_aloc[r] == 1)
+							if (ps.noi[r] == alimentador)
 							{
-								fxp.tensao_pu[r] = fxp.tensao_pu[k] - (fxp.corrente_pu[r] * ps.pu_lt[r]);
+								vf = r;
 							}
 						}
+
+						fxp.tensao_pu[vf] = unit - (fxp.corrente_pu[vf] * ps.pu_lt[vf]);
+					}
+					else if (camada[i][j] == ps.noi[t] && camada[i + 1][k] == ps.nof[t] && ps.estado_swt[t] == 1)
+					{
+						if (ps.candidato_aloc[t] == 1)
+						{
+							//nao é remanejamento
+							vf = 0;
+							vi = 0;
+
+							for (int r = 1; r < linha_dados; r++)
+							{
+								if (ps.nof[r] == camada[i][j] && ps.estado_swt[r] == 1)
+								{
+									vi = r;
+								}
+							}
+
+							for (int r = 1; r < linha_dados; r++)
+							{
+								if (ps.nof[r] == camada[i + 1][k] && ps.estado_swt[r] == 1 && ps.candidato_aloc[r] == 1)
+								{
+									vf = r;
+								}
+							}
+
+							fxp.tensao_pu[vf] = fxp.tensao_pu[vi] - (fxp.corrente_pu[vf] * ps.pu_lt[vf]);
+						}
+						else
+						{
+							//é remanejamento
+							vf = 0;
+							vi = 0;
+
+							for (int r = 1; r < linha_dados; r++)
+							{
+								if (ps.nof[r] == camada[i][j] && ps.estado_swt[r] == 1)
+								{
+									vi = r;
+								}
+							}
+
+							for (int r = 1; r < linha_dados; r++)
+							{
+								if (ps.nof[r] == camada[i + 1][k] && ps.estado_swt[r] == 1 && ps.candidato_aloc[r] == 1)
+								{
+									vf = r;
+								}
+							}
+
+							fxp.tensao_pu[vf] = fxp.tensao_pu[vi] - (fxp.corrente_pu[vf] * ps.pu_lt[t]);
+						}
+
+					}
+
+					else if (camada[i][j] == ps.nof[t] && camada[i + 1][k] == ps.noi[t] && ps.estado_swt[t] == 1)
+					{
+						if (ps.candidato_aloc[t] == 1)
+						{
+							//nao é remanejamento
+							vf = 0;
+							vi = 0;
+
+							for (int r = 1; r < linha_dados; r++)
+							{
+								if (ps.nof[r] == camada[i][j] && ps.estado_swt[r] == 1)
+								{
+									vi = r;
+								}
+							}
+
+							for (int r = 1; r < linha_dados; r++)
+							{
+								if (ps.nof[r] == camada[i + 1][k] && ps.estado_swt[r] == 1 && ps.candidato_aloc[r] == 1)
+								{
+									vf = r;
+								}
+							}
+
+							fxp.tensao_pu[vf] = fxp.tensao_pu[vi] - (fxp.corrente_pu[vf] * ps.pu_lt[vf]);
+						}
+						else
+						{
+							//é remanejamento
+							vf = 0;
+							vi = 0;
+
+							for (int r = 1; r < linha_dados; r++)
+							{
+								if (ps.nof[r] == camada[i][j] && ps.estado_swt[r] == 1)
+								{
+									vi = r;
+								}
+							}
+
+							for (int r = 1; r < linha_dados; r++)
+							{
+								if (ps.nof[r] == camada[i + 1][k] && ps.estado_swt[r] == 1 && ps.candidato_aloc[r] == 1)
+								{
+									vf = r;
+								}
+							}
+
+							fxp.tensao_pu[vf] = fxp.tensao_pu[vi] - (fxp.corrente_pu[vf] * ps.pu_lt[t]);
+						}
+						
 					}
 				}
 			}
 		}
-	}
-	
-	
+	}	
+
 }
 
 void FluxoPotencia::valores_nominais_tensao()
@@ -519,14 +657,13 @@ void FluxoPotencia::fluxo_potencia() //alterar conforme o numero de alimentadore
 	complex <float> tensao_aux[linha_dados];
 	complex <float> corrente_aux[linha_dados];
 
-	float convergencia_tensao[linha_dados];
-	float convergencia_corrente[linha_dados];
+	complex <float> convergencia_tensao[linha_dados];
 
 	int som = 0;
 	int iteracao = 0;
 
 	//valores iniciais
-	for (int i = 0; i < linha_dados; i++)
+	for (int i = 1; i < linha_dados; i++)
 	{
 		tensao_aux[i] = tensao_inicial;
 		corrente_aux[i] = 0.0;
@@ -551,23 +688,28 @@ void FluxoPotencia::fluxo_potencia() //alterar conforme o numero de alimentadore
 		iteracao += 1;
 
 		//copiando valores anteriores
-
 		for (int i = 1; i < linha_dados; i++)
 		{
 			tensao_aux[i] = fxp.tensao_pu[i];
-			corrente_aux[i] = fxp.corrente_pu[i];
 		}
 
 		//1 passo: BACKWARD
 
+		//atribuição das correntes nas barras
+		for (int i = 1; i < linha_dados; i++)
+		{
+			corrente_pu[i] = conj(ps.pu_s_nof[i] / tensao_pu[i]);
+		}
+
+		//corrente nos ramos
 		for (int i = 1; i < num_AL; i++)
 		{
 			backward_sweep(alimentadores[i], camadaAL[i]);
 		}
 
-
 		//2 passo: FORWARD
 
+		//tensoes nodais
 		for (int i = 1; i < num_AL; i++)
 		{
 			forward_sweep(alimentadores[i], camadaAL[i]);
@@ -577,18 +719,12 @@ void FluxoPotencia::fluxo_potencia() //alterar conforme o numero de alimentadore
 
 		for (int k = 1; k < linha_dados; k++)
 		{
-			convergencia_tensao[k] = abs(fxp.tensao_pu[k]) - abs(tensao_aux[k]);
-			convergencia_corrente[k] = abs(fxp.corrente_pu[k]) - abs(corrente_aux[k]);
+			convergencia_tensao[k] = fxp.tensao_pu[k] - tensao_aux[k];
 		}
 
 		for (int k = 1; k < linha_dados; k++)
 		{
 			if (abs(convergencia_tensao[k]) >= epsilon)
-			{
-				som += 1;
-			}
-
-			if (abs(convergencia_corrente[k]) >= epsilon)
 			{
 				som += 1;
 			}
@@ -1079,7 +1215,7 @@ float AlocacaoChaves::calculo_funcao_objetivo(int p_AL)
 		{
 			for (int y = 1; y < linha_dados; y++)
 			{
-				if (ac.secoes_chaves[p_AL][j][k] == ps.nof[y] && ac.secoes_chaves[p_AL][j][k] != 0)
+				if (ac.secoes_chaves[p_AL][j][k] == ps.noi[y] && ac.secoes_chaves[p_AL][j][k] != 0)
 				{
 					ps.estado_swt[y] = 0;
 				}
@@ -2672,7 +2808,7 @@ float RVNS::v4_RVNS(float incumbentmainv4)
 
 int main()
 {
-	srand(static_cast <unsigned int> (time(NULL)));	//faz a aleatoriedade com base no relogio
+	//srand(static_cast <unsigned int> (time(NULL)));	//faz a aleatoriedade com base no relogio
 	//srand(time(NULL));
 
 	int itGVNS = 0;
