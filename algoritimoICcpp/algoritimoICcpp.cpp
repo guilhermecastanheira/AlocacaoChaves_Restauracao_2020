@@ -38,7 +38,7 @@ int alimentadores[num_AL] = { 0, 1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007 
 #define tempo_isolacao 0.12 //tempo necessario para fazer as manobras em horas
 #define taxa_falhas 0.18 //taxa de falhas por km no ano
 #define custoKWh 0.12 // em real 0.53187 (cotação 2017 ANEEL - Elektro - Sudeste)
-#define criterio_parada 30 //criterio de parada da metaheuristica
+#define criterio_parada 15 //criterio de parada da metaheuristica
 #define numero_simulacoes 5 //numero de simulacoes que o algoritmo faz
 
 //Caracteristicas Fluxo de Potencia ------------------------------------
@@ -89,6 +89,7 @@ public:
 
 	int candidato_aloc[linha_dados] = {}; //candidato a alocação de chaves
 	int estado_swt[linha_dados] = {}; //estado da chave
+	int estado_swt_vanila[linha_dados] = {}; //estado das chaves para o sistema vanila
 
 	float dist_no[linha_dados] = {}; //distancia entre nós
 
@@ -229,7 +230,7 @@ void ParametrosSistema::leitura_parametros()
 
 	for (int i = 1; i < linha_dados; i++)
 	{
-		fscanf(arquivo, "%d%d%f%f%f%f%d%d%f", &ps.noi[i], &ps.nof[i], &ps.lt_r[i], &ps.lt_x[i], &ps.s_nofr[i], &ps.s_nofq[i], &ps.candidato_aloc[i], &ps.estado_swt[i], &ps.dist_no[i]);
+		fscanf(arquivo, "%d%d%f%f%f%f%d%d%f", &ps.noi[i], &ps.nof[i], &ps.lt_r[i], &ps.lt_x[i], &ps.s_nofr[i], &ps.s_nofq[i], &ps.candidato_aloc[i], &ps.estado_swt_vanila[i], &ps.dist_no[i]);
 	}
 
 	fclose(arquivo);
@@ -258,6 +259,13 @@ void ParametrosSistema::leitura_parametros()
 
 		//das potencias complexas
 		ps.pu_s_nof[k] = ps.s_nof[k] / sref;
+	}
+
+
+	//estado das chaves
+	for (int k = 1; k < linha_dados; k++)
+	{
+		ps.estado_swt[k] = ps.estado_swt_vanila[k];
 	}
 }
 
@@ -530,11 +538,8 @@ void FluxoPotencia::forward_sweep(int alimentador, int alt)
 							}
 						}
 
-						if (vi != 0 && vf != 0)
-						{
-							fxp.tensao_pu[vf] = fxp.tensao_pu[vi] - (fxp.corrente_pu[vf] * ps.pu_lt[t]);
-						}
-						
+						fxp.tensao_pu[vf] = fxp.tensao_pu[vi] - (fxp.corrente_pu[vf] * ps.pu_lt[t]);
+
 					}
 
 					else if (fxp.camadaAL[alt][i][j] == ps.nof[t] && fxp.camadaAL[alt][i + 1][k] == ps.noi[t] && ps.estado_swt[t] == 1 && fxp.camadaAL[alt][i][j] != alimentador)
@@ -560,11 +565,7 @@ void FluxoPotencia::forward_sweep(int alimentador, int alt)
 							}
 						}
 
-						if (vi != 0 && vf != 0)
-						{
-							fxp.tensao_pu[vf] = fxp.tensao_pu[vi] - (fxp.corrente_pu[vf] * ps.pu_lt[t]);
-						}
-						
+						fxp.tensao_pu[vf] = fxp.tensao_pu[vi] - (fxp.corrente_pu[vf] * ps.pu_lt[t]);
 					}
 				}
 			}
@@ -632,6 +633,12 @@ void FluxoPotencia::fluxo_potencia() //alterar conforme o numero de alimentadore
 		camadas(alimentadores[i], fxp.camadaAL[i]);
 	}
 
+	//estado das chaves
+	for (int k = 1; k < linha_dados; k++)
+	{
+		ps.estado_swt[k] = ps.estado_swt_vanila[k];
+	}
+
 	//FLUXO DE POTENCIA
 
 	iteracao = 0;
@@ -687,7 +694,6 @@ void FluxoPotencia::fluxo_potencia() //alterar conforme o numero de alimentadore
 
 	cout << " max it:     " << iteracao << endl;
 
-
 	fxp.contadorFXP++; //conta o numero de vzs do processo do fluxo de potencia
 
 }
@@ -726,7 +732,7 @@ tuple <int, float> AlocacaoChaves::contagem_criterio(int camada[linha_dados][lin
 
 	if (num_crit < 2) { num_crit = 2; }
 
-	num_crit = 2;
+	//num_crit = 2;
 
 	//encontando o numero estipulado
 	return make_tuple(num_crit, potencia);
@@ -1163,20 +1169,17 @@ float AlocacaoChaves::calculo_funcao_objetivo(int p_AL)
 
 		// 2) agora deve-se fazer o devido chaveamento
 		// 2a) isolando secao j
-
-		
 		for (int k = 1; k < linha_dados; k++)
 		{
 			for (int y = 1; y < linha_dados; y++)
 			{
-				if (ac.secoes_chaves[p_AL][j][k] != 0) { continue; }
-				else if (ac.secoes_chaves[p_AL][j][k] == ps.nof[y])
+				if (ac.secoes_chaves[p_AL][j][k] == 0 || ac.posicaochaves[p_AL][y] == 0) { continue; }
+				else if (ac.secoes_chaves[p_AL][j][k] == ps.nof[ac.posicaochaves[p_AL][y]] || ac.secoes_chaves[p_AL][j][k] == ps.noi[ac.posicaochaves[p_AL][y]])
 				{
-					ps.estado_swt[y] = 0;
+					ps.estado_swt[ac.posicaochaves[p_AL][y]] = 0;
 				}
 			}
 		}
-
 
 		// 2b) cenario da falta
 		//zerar falha na camada
@@ -1501,20 +1504,20 @@ float AlocacaoChaves::calculo_funcao_objetivo_geral()
 
 
 			// 2) agora deve-se fazer o devido chaveamento
-			// 2a) isolando secao j e abrindo a chave
-			
-			
+			// 2a) isolando secao j abrindo a chave
 			for (int k = 1; k < linha_dados; k++)
 			{
 				for (int y = 1; y < linha_dados; y++)
 				{
-					if (ac.secoes_chaves[w][j][k] != 0) { continue; }
-					else if (ac.secoes_chaves[w][j][k] == ps.nof[y])
+					if (ac.secoes_chaves[w][j][k] == 0 || ac.posicaochaves[w][y] == 0) { continue; }
+					else if (ac.secoes_chaves[w][j][k] == ps.nof[ac.posicaochaves[w][y]] || ac.secoes_chaves[w][j][k] == ps.noi[ac.posicaochaves[w][y]])
 					{
-						ps.estado_swt[y] = 0;
+						ps.estado_swt[ac.posicaochaves[w][y]] = 0;
 					}
 				}
 			}
+
+	
 
 			// 2b) cenario da falta
 			//zerar falha na camada
@@ -2787,7 +2790,7 @@ float RVNS::v4_RVNS(float incumbentmainv4)
 
 int main()
 {
-	srand(static_cast <unsigned int> (time(NULL)));	//faz a aleatoriedade com base no relogio
+	//srand(static_cast <unsigned int> (time(NULL)));	//faz a aleatoriedade com base no relogio
 	//srand(time(NULL));
 
 	int itGVNS = 0;
