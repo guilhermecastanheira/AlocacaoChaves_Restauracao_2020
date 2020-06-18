@@ -38,8 +38,8 @@ int alimentadores[num_AL] = { 0, 1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007 
 #define tempo_isolacao 0.12 //tempo necessario para fazer as manobras em horas
 #define taxa_falhas 0.18 //taxa de falhas por km no ano
 #define custoKWh 0.12 // em real 0.53187 (cotação 2017 ANEEL - Elektro - Sudeste)
-#define criterio_parada 10 //criterio de parada da metaheuristica
-#define numero_simulacoes 5 //numero de simulacoes que o algoritmo faz
+#define criterio_parada 3 //criterio de parada da metaheuristica
+#define numero_simulacoes 26 //numero de simulacoes que o algoritmo faz
 
 //Caracteristicas Fluxo de Potencia ------------------------------------
 
@@ -728,8 +728,8 @@ tuple <int, float> AlocacaoChaves::contagem_criterio(int camada[linha_dados][lin
 
 	num = modS / parametroCH_kVA;
 
-	//num_crit = floor(num);
-	num_crit = round(num);
+	num_crit = floor(num);
+	//num_crit = round(num);
 
 	if (num_crit < 2) { num_crit = 2; }
 
@@ -1070,7 +1070,7 @@ float AlocacaoChaves::FO(float potencia_secao, float comprimento, float ens_isol
 
 	resultado = 0.0;
 
-	resultado = (ens_isolacao * tempo_isolacao);
+	resultado = (ens_isolacao * tempo_isolacao * custoKWh);
 	resultado = (potencia_secao * custoKWh * tempo_falha) + resultado;
 	resultado = taxa_falhas * comprimento * resultado;
 
@@ -2611,7 +2611,7 @@ inicioVND:
 
 float RVNS::v1_RVNS(float incumbentmainv1)
 {
-	//DESCRICAO: selecionar 3 chaves aleatorias do sistema e fazer o VND para estas chaves
+	//DESCRICAO: selecionar 4 chaves aleatorias do sistema e fazer o VND para estas chaves
 
 	int ch = 0;
 	float incumbentv1 = 0.0;
@@ -2620,7 +2620,7 @@ float RVNS::v1_RVNS(float incumbentmainv1)
 	incumbentv1 = incumbentmainv1;
 
 
-	for (int i = 1; i < 4; i++)
+	for (int i = 1; i < 5; i++)
 	{
 		ch = rand() % ac.numch_SIS + 1;
 
@@ -2646,7 +2646,6 @@ float RVNS::v2_RVNS(float incumbentmainv2)
 	int cont2 = 0;
 	vector<int>ch2 = {};
 
-	//sorteia alimentadores
 	al1 = al2 = 0;
 	while (al1 == al2)
 	{
@@ -2692,92 +2691,32 @@ float RVNS::v2_RVNS(float incumbentmainv2)
 
 float RVNS::v3_RVNS(float incumbentmainv3)
 {
-	//DESCRICAO: sorteia um alimentador e joga todas as suas chaves para posicoes aleatorias
-
-	int al = 0;
-	int contv3 = 0;
-	vector<int>ch3 = {};
-	float incumbentv3 = 0.0;
-	float resultadov3 = 0.0;
-
-	//sorteando alimentador
-	al = rand() % (num_AL - 1) + 1;
-
-	//identificando chaves
-	contv3 = 0;
-	for (int i = 1; i < num_AL; i++)
-	{
-		for (int j = 1; j < linha_dados; j++)
-		{
-			contv3++;
-
-			if (al == i)
-			{
-				ch3.push_back(contv3);
-			}
-		}
-	}
-
-	gvns.chaves_anterioresVND(al);
-	gvns.fo_anteriorVND(al);
-
-	//colocando todas as chaves em posicoes aleatorias
-	gvns.sorteiochaves(ac.numch_AL[al], fxp.camadaAL[al], ac.posicaochaves[al], al);
-
-	for (int j = 1; j < linha_dados; j++)
-	{
-		ac.chi[al][j] = ps.noi[ac.posicaochaves[al][j]];
-		ac.chf[al][j] = ps.nof[ac.posicaochaves[al][j]];
-	}
-
-	//analisando vnd
-	incumbentv3 = ac.calculo_funcao_objetivo_geral();
-	
-	for (int i = 0; i < ch3.size(); i++)
-	{
-		resultadov3 = vnd.VND_intensificacao(ch3[i], incumbentv3);
-
-		if (resultadov3 < incumbentv3)
-		{
-			incumbentv3 = resultadov3;
-		}
-	}
-
-	//satisfaz ou não?
-	if (incumbentv3 > incumbentmainv3) 
-	{
-		gvns.volta_chaves_anterioresVND(al);
-		gvns.volta_fo_anteriorVND(al);
-	}
-
-	ch3.clear();
-
-	return incumbentv3;
-}
-
-float RVNS::v4_RVNS(float incumbentmainv4)
-{
-	//DESCRICAO: seleciona dois alimantadores, mantem uma chave de um deles e faz vnd para todas elas
+	//DESCRICAO: seleciona dois alimentadores, seleciona uma chave para manter de um deles e faz o vnd para todas as chaves desses alimentadores
 	int al1 = 0;
 	int al2 = 0;
 	int almantemch = 0;
 
-	int chiv4 = 0;
-	int chfv4 = 0;
-	int poschv4 = 0;
-	int sortchv4 = 0;
+	int chiv3 = 0;
+	int chfv3 = 0;
+	int poschv3 = 0;
+	int sortchv3 = 0;
 	bool cond = false;
 
-	vector<int>ch4 = {};
-	vector<int>ch4b = {};
-	int cont4 = 0;
+	int chiv3b = 0;
+	int chfv3b = 0;
+	int poschv3b = 0;
+	int sortchv3b = 0;
 
-	float incumbentv4 = 0.0;
-	float resultadov4 = 0.0;
-	float retorna_incumbentv4 = 0.0;
+	vector<int>ch3 = {};
+	vector<int>ch3b = {};
+	int cont3 = 0;
+
+	float incumbentv3 = 0.0;
+	float resultadov3 = 0.0;
+	float retorna_incumbentv3 = 0.0;
 
 	//valor de incumbente
-	retorna_incumbentv4 = incumbentmainv4;
+	retorna_incumbentv3 = incumbentmainv3;
 
 	//sorteio alimentadores
 	al1 = 0;
@@ -2790,32 +2729,34 @@ float RVNS::v4_RVNS(float incumbentmainv4)
 	}
 
 	//pegando chaves
-	cont4 = 0;
+	cont3 = 0;
 	for (int i = 1; i < num_AL; i++)
 	{
 		for (int j = 1; j < linha_dados; j++)
 		{
 			if (ac.posicaochaves[i][j] != 0)
 			{
-				cont4++;
+				cont3++;
 				if (i == al1)
 				{
-					ch4.push_back(cont4);
+					ch3.push_back(cont3);
 				}
 				else if (i == al2)
 				{
-					ch4b.push_back(cont4);
+					ch3b.push_back(cont3);
 				}
 			}
 		}
 	}
 
-	//selecionando uma chave do al1 para manter
-	sortchv4 = rand() % ac.numch_AL[al1] + 1;
+	//Paro o PRIMEIRO ALIMENTADOR - al1
 
-	chiv4 = ac.chi[al1][sortchv4];
-	chfv4 = ac.chf[al1][sortchv4];
-	poschv4 = ac.posicaochaves[al1][sortchv4];
+	//selecionando uma chave do al1 para manter
+	sortchv3 = rand() % ac.numch_AL[al1] + 1;
+
+	chiv3 = ac.chi[al1][sortchv3];
+	chfv3 = ac.chf[al1][sortchv3];
+	poschv3 = ac.posicaochaves[al1][sortchv3];
 
 	gvns.chaves_anterioresVND(al1);
 	gvns.fo_anteriorVND(al1);
@@ -2828,13 +2769,13 @@ float RVNS::v4_RVNS(float incumbentmainv4)
 		ac.chi[al1][j] = ps.noi[ac.posicaochaves[al1][j]];
 		ac.chf[al1][j] = ps.nof[ac.posicaochaves[al1][j]];
 	}
-	
-	
+
+
 	//voltando chave
 	cond = false;
 	for (int j = 1; j < linha_dados; j++)
 	{
-		if (poschv4 == ac.posicaochaves[al1][j])
+		if (poschv3 == ac.posicaochaves[al1][j])
 		{
 			cond = true; //ja tem a chave
 		}
@@ -2842,39 +2783,56 @@ float RVNS::v4_RVNS(float incumbentmainv4)
 
 	if (cond == false)
 	{
-		ac.chi[al1][sortchv4] = chiv4;
-		ac.chf[al1][sortchv4] = chfv4;
-		ac.posicaochaves[al1][sortchv4] = poschv4;
+		ac.chi[al1][sortchv3] = chiv3;
+		ac.chf[al1][sortchv3] = chfv3;
+		ac.posicaochaves[al1][sortchv3] = poschv3;
 	}
-	
-	//analisando vnd
-	incumbentv4 = ac.calculo_funcao_objetivo_geral();
-	
-	for (int i = 0; i < ch4.size(); i++)
-	{
-		resultadov4 = vnd.VND_intensificacao(ch4[i], incumbentv4);
 
-		if (resultadov4 < incumbentv4)
+	//analisando vnd
+	incumbentv3 = ac.calculo_funcao_objetivo_geral();
+
+	for (int i = 0; i < ch3.size(); i++)
+	{
+		resultadov3 = vnd.VND_intensificacao(ch3[i], incumbentv3);
+
+		if (resultadov3 < incumbentv3)
 		{
-			incumbentv4 = resultadov4;
+			incumbentv3 = resultadov3;
 		}
 	}
 
-	if (incumbentv4 > retorna_incumbentv4)
+	if (incumbentv3 > retorna_incumbentv3)
 	{
 		gvns.volta_chaves_anterioresVND(al1);
 		gvns.volta_fo_anteriorVND(al1);
 	}
 	else
 	{
-		retorna_incumbentv4 = incumbentv4;
+		retorna_incumbentv3 = incumbentv3;
 	}
 
-	ch4.clear();
+	ch3.clear();
 
-	//para o segundo alimentador
+	//Para o SEGUNDO ALIMENTADOR - al2
+
 	gvns.chaves_anterioresVND(al2);
 	gvns.fo_anteriorVND(al2);
+
+	//selecionando duas chaves do al2 para manter
+	sortchv3 = sortchv3b = 0;
+	while (sortchv3 == sortchv3b)
+	{
+		sortchv3 = rand() % ac.numch_AL[al2] + 1;
+		sortchv3b = rand() % ac.numch_AL[al2] + 1;
+	}
+	
+	chiv3 = ac.chi[al2][sortchv3];
+	chfv3 = ac.chf[al2][sortchv3];
+	poschv3 = ac.posicaochaves[al2][sortchv3];
+
+	chiv3b = ac.chi[al2][sortchv3b];
+	chfv3b = ac.chf[al2][sortchv3b];
+	poschv3b = ac.posicaochaves[al2][sortchv3b];
 
 	//sorteio do segundo alimentador
 	gvns.sorteiochaves(ac.numch_AL[al2], fxp.camadaAL[al2], ac.posicaochaves[al2], al2);
@@ -2885,30 +2843,176 @@ float RVNS::v4_RVNS(float incumbentmainv4)
 		ac.chf[al2][j] = ps.nof[ac.posicaochaves[al2][j]];
 	}
 
-	//analisando vnd para o segundo al
-	incumbentv4 = ac.calculo_funcao_objetivo_geral();
+	//voltando as duas chaves salvas
 
-	for (int i = 0; i < ch4b.size(); i++)
+	//chave 1
+	cond = false;
+	for (int j = 1; j < linha_dados; j++)
 	{
-		resultadov4 = vnd.VND_intensificacao(ch4b[i], incumbentv4);
-
-		if (resultadov4 < incumbentv4)
+		if (poschv3 == ac.posicaochaves[al2][j])
 		{
-			incumbentv4 = resultadov4;
+			cond = true; //ja tem a chave
 		}
 	}
 
-	if (incumbentv4 > retorna_incumbentv4)
+	if (cond == false)
+	{
+		ac.chi[al2][sortchv3] = chiv3;
+		ac.chf[al2][sortchv3] = chfv3;
+		ac.posicaochaves[al2][sortchv3] = poschv3;
+	}
+
+	//chave 2
+	cond = false;
+	for (int j = 1; j < linha_dados; j++)
+	{
+		if (poschv3b == ac.posicaochaves[al2][j])
+		{
+			cond = true; //ja tem a chave
+		}
+	}
+
+	if (cond == false)
+	{
+		ac.chi[al2][sortchv3b] = chiv3b;
+		ac.chf[al2][sortchv3b] = chfv3b;
+		ac.posicaochaves[al2][sortchv3b] = poschv3b;
+	}
+
+	//analisando vnd para o segundo al
+	incumbentv3 = ac.calculo_funcao_objetivo_geral();
+
+	for (int i = 0; i < ch3b.size(); i++)
+	{
+		resultadov3 = vnd.VND_intensificacao(ch3b[i], incumbentv3);
+
+		if (resultadov3 < incumbentv3)
+		{
+			incumbentv3 = resultadov3;
+		}
+	}
+
+	if (incumbentv3 > retorna_incumbentv3)
 	{
 		gvns.volta_chaves_anterioresVND(al2);
 		gvns.volta_fo_anteriorVND(al2);
 	}
 	else
 	{
-		retorna_incumbentv4 = incumbentv4;
+		retorna_incumbentv3 = incumbentv3;
 	}
 
-	ch4b.clear();
+	ch3b.clear();
+
+	return retorna_incumbentv3;
+}
+
+float RVNS::v4_RVNS(float incumbentmainv4)
+{
+	//DESCRICAO: seleciona todos os alimantadores, mantem uma chave de cada um deles e faz vnd para todas elas
+
+	int almantemch = 0;
+
+	int chiv4 = 0;
+	int chfv4 = 0;
+	int poschv4 = 0;
+	int sortchv4 = 0;
+	bool cond = false;
+
+	vector<int>ch4 = {};
+	int cont4 = 0;
+
+	float incumbentv4 = 0.0;
+	float resultadov4 = 0.0;
+	float retorna_incumbentv4 = 0.0;
+
+	//valor de incumbente
+	retorna_incumbentv4 = incumbentmainv4;
+
+	//analise para todos os alimentadores
+	for (int e = 1; e < num_AL; e++)
+	{
+		//pegando chaves
+		cont4 = 0;
+		for (int i = 1; i < num_AL; i++)
+		{
+			for (int j = 1; j < linha_dados; j++)
+			{
+				if (ac.posicaochaves[i][j] != 0)
+				{
+					cont4++;
+					if (i == e)
+					{
+						ch4.push_back(cont4);
+					}
+				}
+			}
+		}
+
+		//selecionando uma chave do e para manter
+		sortchv4 = rand() % ac.numch_AL[e] + 1;
+
+		chiv4 = ac.chi[e][sortchv4];
+		chfv4 = ac.chf[e][sortchv4];
+		poschv4 = ac.posicaochaves[e][sortchv4];
+
+		gvns.chaves_anterioresVND(e);
+		gvns.fo_anteriorVND(e);
+
+		//sorteando demais chaves
+		gvns.sorteiochaves(ac.numch_AL[e], fxp.camadaAL[e], ac.posicaochaves[e], e);
+
+		for (int j = 1; j < linha_dados; j++)
+		{
+			ac.chi[e][j] = ps.noi[ac.posicaochaves[e][j]];
+			ac.chf[e][j] = ps.nof[ac.posicaochaves[e][j]];
+		}
+
+
+		//voltando chave
+		cond = false;
+		for (int j = 1; j < linha_dados; j++)
+		{
+			if (poschv4 == ac.posicaochaves[e][j])
+			{
+				cond = true; //ja tem a chave
+			}
+		}
+
+		if (cond == false)
+		{
+			ac.chi[e][sortchv4] = chiv4;
+			ac.chf[e][sortchv4] = chfv4;
+			ac.posicaochaves[e][sortchv4] = poschv4;
+		}
+
+		//analisando vnd
+		incumbentv4 = ac.calculo_funcao_objetivo_geral();
+
+		for (int i = 0; i < ch4.size(); i++)
+		{
+			resultadov4 = vnd.VND_intensificacao(ch4[i], incumbentv4);
+
+			if (resultadov4 < incumbentv4)
+			{
+				incumbentv4 = resultadov4;
+			}
+		}
+
+		if (incumbentv4 > retorna_incumbentv4)
+		{
+			gvns.volta_chaves_anterioresVND(e);
+			gvns.volta_fo_anteriorVND(e);
+		}
+		else
+		{
+			retorna_incumbentv4 = incumbentv4;
+		}
+
+		ch4.clear();
+
+	}
+
 
 	return retorna_incumbentv4;
 }
@@ -3029,7 +3133,7 @@ nmgvns:
 
 metaheuristicGVNS:
 
-	cout << "1-RVNS: \n";
+	cout << ". \n";
 	current_solution = rvns.v1_RVNS(incumbent_solution);
 
 	if (current_solution < incumbent_solution)
@@ -3042,7 +3146,7 @@ metaheuristicGVNS:
 		goto metaheuristicGVNS;
 	}
 
-	cout << "2-RVNS: \n";
+	cout << ". \n";
 	current_solution = rvns.v2_RVNS(incumbent_solution);
 
 	if (current_solution < incumbent_solution)
@@ -3055,7 +3159,7 @@ metaheuristicGVNS:
 		goto metaheuristicGVNS;
 	}
 
-	cout << "3-RVNS: \n";
+	cout << ". \n";
 	current_solution = rvns.v3_RVNS(incumbent_solution);
 
 	if (current_solution < incumbent_solution)
@@ -3068,7 +3172,7 @@ metaheuristicGVNS:
 		goto metaheuristicGVNS;
 	}
 
-	cout << "4-RVNS: \n";
+	cout << ". \n";
 	current_solution = rvns.v4_RVNS(incumbent_solution);
 
 	if (current_solution < incumbent_solution)
