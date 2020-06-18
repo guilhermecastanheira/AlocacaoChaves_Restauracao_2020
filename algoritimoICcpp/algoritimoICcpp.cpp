@@ -38,8 +38,8 @@ int alimentadores[num_AL] = { 0, 1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007 
 #define tempo_isolacao 0.12 //tempo necessario para fazer as manobras em horas
 #define taxa_falhas 0.18 //taxa de falhas por km no ano
 #define custoKWh 0.12 // em real 0.53187 (cotação 2017 ANEEL - Elektro - Sudeste)
-#define criterio_parada 3 //criterio de parada da metaheuristica
-#define numero_simulacoes 26 //numero de simulacoes que o algoritmo faz
+#define criterio_parada 5 //criterio de parada da metaheuristica
+#define numero_simulacoes 5 //numero de simulacoes que o algoritmo faz
 
 //Caracteristicas Fluxo de Potencia ------------------------------------
 
